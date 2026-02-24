@@ -1,0 +1,49 @@
+# Grand Hotel Riviera
+> Boutique 4-star hotel on the Amalfi Coast with sea views and private beach.
+
+@lang: en
+@version: 1.0
+@updated: 2026-02-24
+@canonical: https://www.grandhotelriviera.example.com/context.txt
+@topics: hotel, amalfi coast, boutique, accommodation, italy
+
+## section: About
+
+Grand Hotel Riviera is located on the scenic Amalfi Coast in southern Italy.
+4-star boutique hotel with 42 unique rooms and suites.
+Rooftop pool, private beach access, and two on-site restaurants.
+Family-owned since 1962.
+
+## section: Rooms and Prices
+
+Classic Room: from €120/night
+Superior Sea View: from €180/night
+Junior Suite: from €250/night
+Penthouse Suite: from €400/night
+All rooms include Mediterranean breakfast, wifi, and air conditioning.
+Minimum stay 2 nights in high season (June-September).
+
+## section: Dining
+
+Trattoria del Mare — Beachfront restaurant, fresh seafood daily.
+Open for dinner 19:00-23:00. Reservations recommended.
+Chef Marco Bellini, seasonal menu with local ingredients.
+
+Rooftop Bar — Cocktails and light bites with panoramic coast views.
+Open 17:00-01:00 daily.
+
+## section: Services
+
+- Check-in: 14:00 / Check-out: 11:00
+- Private beach with sun loungers included
+- Spa and wellness center (treatments from €60)
+- Airport transfer from Naples: €90
+- Concierge service available 24/7
+- Free parking on-site
+
+## section: Contact and Bookings
+
+Tel: +39 089 555 0123
+Email: info@grandhotelriviera.example.com
+Direct bookings get 10% discount vs OTAs.
+Book at: grandhotelriviera.example.com/reservations

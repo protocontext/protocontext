@@ -1,0 +1,40 @@
+# La Trattoria del Porto
+> Traditional Italian seafood restaurant on the Mediterranean waterfront.
+
+@lang: en
+@version: 1.0
+@updated: 2026-02-24
+@canonical: https://www.trattoriadelporto.example.com/context.txt
+@topics: restaurant, italian, seafood, mediterranean, dining
+
+## section: About
+
+La Trattoria del Porto serves traditional Italian seafood since 1965.
+Located at Via del Porto 12, directly on the waterfront.
+Family-owned, third generation. Seats 60 inside, 40 on the terrace.
+Featured in Gambero Rosso and Michelin Guide.
+
+## section: Menu Highlights
+
+Antipasti: Crudo di mare (€16), Caponata (€10), Arancini (€8)
+Primi: Pasta con le sarde (€14), Spaghetti ai ricci (€18), Busiate al pesto (€13)
+Secondi: Grilled swordfish (€22), Mixed fried seafood (€18), Tuna steak (€20)
+Dolci: Cannoli (€7), Cassata (€8), Granita with brioche (€6)
+Wine list: 80+ Italian labels. House wine €5/glass.
+
+## section: Hours and Reservations
+
+Tuesday to Sunday: 12:30-15:00, 19:30-23:00
+Closed Mondays.
+Reservations recommended for dinner and weekends.
+Tel: +39 091 555 0456
+Email: info@trattoriadelporto.example.com
+
+## section: Practical Info
+
+Average meal: €35-50 per person with wine.
+Credit cards accepted. No minimum.
+Terrace open April to October.
+Private dining room for groups up to 20.
+Gluten-free and vegetarian options available.
+Street parking available nearby.

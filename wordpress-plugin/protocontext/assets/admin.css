@@ -1,0 +1,158 @@
+/* ProtoContext Admin Styles */
+
+.protocontext-wrap {
+    max-width: 1200px;
+}
+
+.protocontext-header {
+    margin-bottom: 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.protocontext-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 5px;
+}
+
+.protocontext-subtitle {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+}
+
+.protocontext-subtitle code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+/* Layout */
+.protocontext-layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.protocontext-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.protocontext-sidebar {
+    width: 360px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 42px;
+}
+
+/* Cards */
+.protocontext-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.protocontext-card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    padding: 0;
+}
+
+/* Sections editor */
+.protocontext-section-item {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.protocontext-section-item .section-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.protocontext-section-item .section-header input {
+    flex: 1;
+    font-weight: 600;
+}
+
+.protocontext-section-item textarea {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.protocontext-section-item .char-count {
+    display: block;
+    text-align: right;
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.protocontext-section-item .char-count.over-limit {
+    color: #d63638;
+    font-weight: 600;
+}
+
+.protocontext-remove-section {
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+}
+
+#protocontext-add-section {
+    margin-top: 4px;
+}
+
+/* Preview */
+.protocontext-preview-box {
+    background: #142030;
+    color: #e0e0e0;
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 16px;
+    border-radius: 6px;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-top: 12px;
+}
+
+/* Info list */
+.protocontext-info {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.protocontext-info li {
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.protocontext-info li:last-child {
+    border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+    .protocontext-layout {
+        flex-direction: column;
+    }
+    .protocontext-sidebar {
+        width: 100%;
+        position: static;
+    }
+}

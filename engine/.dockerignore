@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+docker-compose.yml
+.env.example
+.git/
+.DS_Store

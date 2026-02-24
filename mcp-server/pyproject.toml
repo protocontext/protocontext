@@ -1,0 +1,11 @@
+[project]
+name = "protocontext-mcp"
+version = "0.1.1-beta"
+description = "MCP server for ProtoContext — search AI-readable web content from any AI agent"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.2.0",
+    "httpx>=0.27.0",
+]

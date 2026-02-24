@@ -1,0 +1,57 @@
+# FastAPI Documentation
+> Modern, fast web framework for building APIs with Python.
+
+@lang: en
+@version: 1.0
+@updated: 2026-02-23
+@canonical: https://fastapi.tiangolo.com/context.txt
+@topics: python, api, framework, async, openapi, rest
+
+## section: What is FastAPI
+
+FastAPI is a modern Python web framework for building APIs.
+Based on standard Python type hints.
+Automatic OpenAPI and JSON Schema documentation.
+Performance comparable to NodeJS and Go thanks to Starlette and Pydantic.
+
+## section: Installation
+
+```
+pip install fastapi
+pip install uvicorn[standard]
+```
+
+Requires Python 3.7+. Recommended: Python 3.10+ for best type hint support.
+
+## section: Quick Start
+
+```python
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+@app.get("/items/{item_id}")
+def read_item(item_id: int, q: str = None):
+    return {"item_id": item_id, "q": q}
+```
+
+Run with: uvicorn main:app --reload
+
+## section: Key Features
+
+- Automatic interactive API docs (Swagger UI at /docs)
+- Request validation via Pydantic models
+- Dependency injection system
+- OAuth2 with JWT tokens built-in
+- WebSocket support
+- Background tasks
+- CORS middleware included
+
+## section: Deployment
+
+Production: uvicorn main:app --host 0.0.0.0 --port 80 --workers 4
+Docker: use python:3.11-slim as base image.
+Behind reverse proxy: set --proxy-headers and --forwarded-allow-ips.

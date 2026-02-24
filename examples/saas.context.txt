@@ -1,0 +1,35 @@
+# Stripe
+> Payment infrastructure for the internet.
+
+@lang: en
+@version: 1.0
+@updated: 2026-02-23
+@canonical: https://stripe.com/context.txt
+@topics: payments, api, webhooks, subscriptions, billing
+
+## section: What is Stripe
+
+Stripe is a payment processing platform for businesses of all sizes.
+Accept payments in 135+ currencies, manage subscriptions, send payouts.
+API-first with SDKs for Python, Node, Ruby, PHP, Go, Java, .NET.
+
+## section: Quick Start
+
+Install: pip install stripe
+Initialize: import stripe; stripe.api_key = "sk_live_..."
+Create payment: stripe.PaymentIntent.create(amount=2000, currency="usd")
+Amount is always in smallest currency unit (cents for USD).
+
+## section: Webhooks
+
+Stripe sends events to your endpoint via HTTP POST.
+Always verify the signature using the Stripe-Signature header.
+Use stripe.Webhook.construct_event(payload, sig, "whsec_...") to verify.
+Test locally with: stripe listen --forward-to localhost:3000/webhook
+
+## section: Pricing
+
+No monthly fees. Pay per transaction.
+Cards: 1.5% + €0.25 per successful charge (Europe)
+International cards: +1.5%
+Full pricing: stripe.com/pricing

@@ -1,0 +1,30 @@
+services:
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: protocontext-typesense
+    environment:
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-protocontext-dev-key}
+      - TYPESENSE_DATA_DIR=/data
+    volumes:
+      - typesense_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: protocontext-api
+    ports:
+      - "8000:8000"
+    environment:
+      - TYPESENSE_URL=http://typesense:8108
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-protocontext-dev-key}
+      - PROTO_API_TOKEN=${PROTO_API_TOKEN:-}
+    depends_on:
+      - typesense
+    volumes:
+      - ../registry:/app/registry
+      - keys_data:/app/data
+
+volumes:
+  typesense_data:
+  keys_data:
