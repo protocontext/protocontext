@@ -4,7 +4,7 @@
 
 **The open standard + search engine for AI-readable web content.**
 
-The open standard + search engine for AI-readable web content. Like robots.txt tells crawlers what to index, context.txt tells AI agents what your site is about.
+Like robots.txt tells crawlers what to index, context.txt tells AI agents what your site is about.
 
 
 [![Spec v1.0](https://img.shields.io/badge/spec-v1.0-10b981?style=flat-square)](SPEC.md)
