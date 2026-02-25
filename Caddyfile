@@ -3,42 +3,55 @@
 # Without a domain: serves on :80 (accessible by IP).
 
 {$DOMAIN::80} {
-	# API endpoints
+	# Cacheable read endpoints (60s — safe for CDN and browsers)
 	handle /search* {
 		reverse_proxy api:8000
+		header Cache-Control "public, max-age=60"
 	}
 	handle /site* {
 		reverse_proxy api:8000
+		header Cache-Control "public, max-age=60"
 	}
+	handle /stats* {
+		reverse_proxy api:8000
+		header Cache-Control "public, max-age=60"
+	}
+	handle /health* {
+		reverse_proxy api:8000
+		header Cache-Control "public, max-age=30"
+	}
+
+	# Write/auth endpoints — never cache
 	handle /submit* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 	handle /upload* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 	handle /delete* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 	handle /batch* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 	handle /content* {
 		reverse_proxy api:8000
 	}
-	handle /stats* {
-		reverse_proxy api:8000
-	}
-	handle /health* {
-		reverse_proxy api:8000
-	}
 	handle /auth/* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 	handle /api-keys* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 	handle /settings* {
 		reverse_proxy api:8000
+		header Cache-Control "no-store"
 	}
 
 	# Everything else → dashboard
