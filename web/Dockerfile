@@ -12,10 +12,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time env: API URL will be set by the platform
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
+# No NEXT_PUBLIC_API_URL needed — dashboard auto-detects API
+# at the same origin via Caddy reverse proxy
 RUN mkdir -p public && npm run build
 
 # --- Runner ---

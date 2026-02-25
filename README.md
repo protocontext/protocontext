@@ -126,6 +126,8 @@ curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/inst
 
 That's it — one command installs everything: **API + Dashboard + Typesense + Caddy** (reverse proxy with auto HTTPS).
 
+Access the dashboard at `http://YOUR_IP` (port 80) — Caddy routes everything automatically.
+
 > **Requirements:** VPS with Docker and at least 2GB RAM. We recommend Ubuntu with Docker pre-installed.
 > The installer auto-adds swap on low-memory machines.
 

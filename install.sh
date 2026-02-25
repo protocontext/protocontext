@@ -13,7 +13,7 @@ set -euo pipefail
 
 REPO="https://github.com/protocontext/protocontext.git"
 DIR="protocontext"
-DOMAIN="${DOMAIN:-localhost}"
+DOMAIN="${DOMAIN:-}"
 
 echo ""
 echo "  ╔══════════════════════════════════════╗"
@@ -59,25 +59,28 @@ else
   cd "$DIR"
 fi
 
-# Generate a random Typesense key if not set
+# Generate .env if not present
 if [ ! -f .env ]; then
   TSKEY=$(openssl rand -hex 16)
-  cat > .env <<ENVEOF
+  if [ -n "$DOMAIN" ]; then
+    cat > .env <<ENVEOF
 TYPESENSE_API_KEY=$TSKEY
 DOMAIN=$DOMAIN
-API_URL=http://localhost:8000
 ENVEOF
+  else
+    cat > .env <<ENVEOF
+TYPESENSE_API_KEY=$TSKEY
+ENVEOF
+  fi
   echo "→ Generated .env with random Typesense key"
 else
   echo "→ Using existing .env"
 fi
 
-# If domain is set, update API_URL
-if [ "$DOMAIN" != "localhost" ]; then
-  sed -i.bak "s|API_URL=.*|API_URL=https://$DOMAIN|" .env && rm -f .env.bak
+if [ -n "$DOMAIN" ]; then
   echo "→ Domain: $DOMAIN (HTTPS via Let's Encrypt)"
 else
-  echo "→ No domain set — running on http://localhost"
+  echo "→ No domain set — running on http://<your-ip>"
   echo "  Tip: DOMAIN=yourdomain.com to enable HTTPS"
 fi
 
@@ -86,15 +89,18 @@ echo ""
 echo "→ Building and starting services..."
 docker compose -f docker-compose.prod.yml up -d --build
 
+# Detect server IP for display
+SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "YOUR_IP")
+
 echo ""
 echo "  ✅ ProtoContext is running!"
 echo ""
-if [ "$DOMAIN" != "localhost" ]; then
+if [ -n "$DOMAIN" ]; then
   echo "  Dashboard:  https://$DOMAIN"
   echo "  API:        https://$DOMAIN/search?q=hello"
 else
-  echo "  Dashboard:  http://localhost:3000"
-  echo "  API:        http://localhost:8000"
+  echo "  Dashboard:  http://$SERVER_IP"
+  echo "  API:        http://$SERVER_IP/search?q=hello"
 fi
 echo ""
 echo "  Next: open the dashboard and complete setup."

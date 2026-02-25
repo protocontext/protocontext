@@ -39,8 +39,6 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000}
     container_name: protocontext-dashboard
     restart: unless-stopped
     ports:

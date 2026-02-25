@@ -1,10 +1,8 @@
 # ProtoContext — Caddy reverse proxy
-# Caddy auto-provisions HTTPS certificates via Let's Encrypt.
-#
-# Replace {$DOMAIN} with your domain, or set it as an env var.
-# For IP-only (no domain), replace the first line with :80
+# With a domain: auto HTTPS via Let's Encrypt.
+# Without a domain: serves on :80 (accessible by IP).
 
-{$DOMAIN:localhost} {
+{$DOMAIN::80} {
 	# API endpoints
 	handle /search* {
 		reverse_proxy api:8000
