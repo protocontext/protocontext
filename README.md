@@ -4,7 +4,7 @@
 
 **The open standard + search engine + RAG for AI-readable web content.**
 
-Like robots.txt tells crawlers what to index, context.txt tells AI agents what your site is about.
+ProtoContext is an open standard that allows AI agents to consume structured knowledge directly through a standardized plain-text format (context.txt), instead of scraping websites, parsing HTML, chunking content, and relying exclusively on embedding-based vector databases. A context.txt file can be published by a website, or loaded locally by an application and used as a lightweight RAG-style knowledge source. Because the structure is explicit and deterministic, agents can retrieve the exact relevant information with very low latency and high predictability. No scraping pipelines are required, embeddings are optional rather than mandatory, and the same format works both as a standalone agent knowledge layer and as an input for search engines or vector-based systems. Think of it as an agent-native, deterministic knowledge layer, with optional indexing and search on top, rather than a purely probabilistic semantic RAG pipeline.
 
 Website: https://protocontext.org/
 
