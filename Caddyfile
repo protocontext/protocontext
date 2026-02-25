@@ -1,0 +1,50 @@
+# ProtoContext — Caddy reverse proxy
+# Caddy auto-provisions HTTPS certificates via Let's Encrypt.
+#
+# Replace {$DOMAIN} with your domain, or set it as an env var.
+# For IP-only (no domain), replace the first line with :80
+
+{$DOMAIN:localhost} {
+	# API endpoints
+	handle /search* {
+		reverse_proxy api:8000
+	}
+	handle /site* {
+		reverse_proxy api:8000
+	}
+	handle /submit* {
+		reverse_proxy api:8000
+	}
+	handle /upload* {
+		reverse_proxy api:8000
+	}
+	handle /delete* {
+		reverse_proxy api:8000
+	}
+	handle /batch* {
+		reverse_proxy api:8000
+	}
+	handle /content* {
+		reverse_proxy api:8000
+	}
+	handle /stats* {
+		reverse_proxy api:8000
+	}
+	handle /health* {
+		reverse_proxy api:8000
+	}
+	handle /auth/* {
+		reverse_proxy api:8000
+	}
+	handle /api-keys* {
+		reverse_proxy api:8000
+	}
+	handle /settings* {
+		reverse_proxy api:8000
+	}
+
+	# Everything else → dashboard
+	handle {
+		reverse_proxy dashboard:3000
+	}
+}

@@ -1,0 +1,72 @@
+# ProtoContext — Production (single server)
+# Run everything on one machine: API + Dashboard + Typesense
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Or use the one-liner:
+#   curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/install.sh | bash
+
+services:
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: protocontext-typesense
+    restart: unless-stopped
+    environment:
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-protocontext-dev-key}
+      - TYPESENSE_DATA_DIR=/data
+    volumes:
+      - typesense_data:/data
+
+  api:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    container_name: protocontext-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TYPESENSE_URL=http://typesense:8108
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY:-protocontext-dev-key}
+    depends_on:
+      - typesense
+    volumes:
+      - registry_data:/app/registry
+      - keys_data:/app/data
+
+  dashboard:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000}
+    container_name: protocontext-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  # Reverse proxy — serves everything on port 80/443
+  caddy:
+    image: caddy:2-alpine
+    container_name: protocontext-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - dashboard
+
+volumes:
+  typesense_data:
+  keys_data:
+  registry_data:
+  caddy_data:
+  caddy_config:

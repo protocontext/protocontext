@@ -110,11 +110,25 @@ protocontext/
 
 ProtoContext includes a **search engine for the agent era** — indexes `context.txt` files across the web and serves structured results with sub-10ms latency.
 
-### Deploy
+### Deploy (one server, ~$6/mo)
+
+Install on any VPS (DigitalOcean, Hetzner, AWS, etc.) with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/install.sh | bash
+```
+
+With a custom domain (auto HTTPS via Let's Encrypt):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/install.sh | DOMAIN=ai.yourdomain.com bash
+```
+
+This runs **API + Dashboard + Typesense + Caddy** on a single $6/mo droplet via Docker Compose.
 
 <div align="center">
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/protocontext/protocontext/tree/main)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/droplets/new?image=docker-20-04&size=s-1vcpu-1gb&region=nyc1)
 &nbsp;&nbsp;
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/protocontext)
 
