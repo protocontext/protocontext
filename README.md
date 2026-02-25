@@ -110,9 +110,9 @@ protocontext/
 
 ProtoContext includes a **search engine for the agent era** — indexes `context.txt` files across the web and serves structured results with sub-10ms latency.
 
-### Deploy (one server, ~$6/mo)
+### Deploy (one server)
 
-Install on any VPS (DigitalOcean, Hetzner, AWS, etc.) with a single command:
+Get a VPS with Docker (DigitalOcean, Hetzner, AWS, etc.) and run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/install.sh | bash
@@ -124,11 +124,27 @@ With a custom domain (auto HTTPS via Let's Encrypt):
 curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/install.sh | DOMAIN=ai.yourdomain.com bash
 ```
 
-This runs **API + Dashboard + Typesense + Caddy** on a single $6/mo droplet via Docker Compose.
+That's it — one command installs everything: **API + Dashboard + Typesense + Caddy** (reverse proxy with auto HTTPS).
+
+> **Requirements:** VPS with Docker and at least 2GB RAM. We recommend Ubuntu with Docker pre-installed.
+> The installer auto-adds swap on low-memory machines.
+
+<details>
+<summary><b>Reinstall / Update</b></summary>
+
+```bash
+# Clean reinstall
+rm -rf protocontext && curl -fsSL https://raw.githubusercontent.com/protocontext/protocontext/main/install.sh | bash
+
+# Update existing installation (preserves data)
+cd protocontext && git pull && docker compose -f docker-compose.prod.yml up -d --build
+```
+
+</details>
 
 <div align="center">
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/droplets/new?image=docker-20-04&size=s-1vcpu-1gb&region=nyc1)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/droplets/new?image=docker-20-04&size=s-2vcpu-4gb&region=nyc1)
 &nbsp;&nbsp;
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/protocontext)
 
