@@ -21,7 +21,7 @@ Website: https://protocontext.org/
 
 ## The Problem
 
-AI agents waste thousands of tokens scraping HTML, parsing navigation bars, cookie banners, and JavaScript bundles just to understand what a website is about. It's slow, expensive, and inaccurate.
+Today, most AI agents understand websites by scraping and parsing raw HTML. That means processing navigation bars, cookie banners, layout markup, and JavaScript before reaching the actual content. This adds token overhead, increases latency, and reduces accuracy due to UI noise and structural ambiguity.
 
 ## The Solution
 
