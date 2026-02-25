@@ -34,6 +34,21 @@ if ! docker compose version &>/dev/null; then
   exit 1
 fi
 
+# Ensure enough memory for building (Next.js needs ~1.5GB)
+TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+SWAP_SIZE_KB=$(grep SwapTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+TOTAL_KB=$((TOTAL_MEM_KB + SWAP_SIZE_KB))
+
+if [ "$TOTAL_KB" -lt 2000000 ] && [ ! -f /swapfile ]; then
+  echo "→ Low memory detected ($(( TOTAL_MEM_KB / 1024 ))MB). Adding 2GB swap for build..."
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  echo "  Swap enabled (2GB)"
+fi
+
 # Clone
 if [ -d "$DIR" ]; then
   echo "→ Updating existing installation..."
