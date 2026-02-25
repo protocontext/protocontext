@@ -49,6 +49,13 @@ if [ "$TOTAL_KB" -lt 2000000 ] && [ ! -f /swapfile ]; then
   echo "  Swap enabled (2GB)"
 fi
 
+# Open firewall ports (if UFW is active)
+if command -v ufw &>/dev/null && ufw status | grep -q "active"; then
+  echo "→ Opening firewall ports (80, 443)..."
+  ufw allow 80/tcp >/dev/null 2>&1 || true
+  ufw allow 443/tcp >/dev/null 2>&1 || true
+fi
+
 # Clone
 if [ -d "$DIR" ]; then
   echo "→ Updating existing installation..."

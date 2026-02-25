@@ -129,7 +129,7 @@ That's it — one command installs everything: **API + Dashboard + Typesense + C
 Access the dashboard at `http://YOUR_IP` (port 80) — Caddy routes everything automatically.
 
 > **Requirements:** VPS with Docker and at least 2GB RAM. We recommend Ubuntu with Docker pre-installed.
-> The installer auto-adds swap on low-memory machines.
+> The installer auto-opens firewall ports (80/443) and adds swap on low-memory machines.
 
 <details>
 <summary><b>Reinstall / Update</b></summary>
