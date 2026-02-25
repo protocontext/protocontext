@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-protocontext",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "n8n node for ProtoContext — search and manage AI-readable content",
   "keywords": [
     "n8n-community-node-package",
@@ -19,7 +19,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "build": "tsc && copyfiles -u 1 \"nodes/**/*.svg\" dist/",
+    "build": "tsc && copyfiles -u 0 \"nodes/**/*.svg\" dist/",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build"
   },
