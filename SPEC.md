@@ -2,10 +2,12 @@
 
 ## Overview
 
-ProtoContext defines how websites publish structured content for AI agents and search engines via a `context.txt` file served at the root of any domain.
+ProtoContext defines how websites and applications provide structured content for AI agents and search engines via a `context.txt` file.
+
+The canonical web distribution is a file served at the root of a domain. The same format can also be loaded locally (for example, from an admin dashboard upload flow) and indexed without public URL hosting.
 
 **Standard file:** `context.txt`
-**Location:** `https://domain.com/context.txt`
+**Canonical web location:** `https://domain.com/context.txt`
 **Content-Type:** `text/plain; charset=utf-8`
 
 ## Format Rules
@@ -47,6 +49,7 @@ Metadata fields appear after the header, prefixed with `@`:
 **Optional fields:**
 | Field | Description | Format |
 |---|---|---|
+| `@content_type` | Primary content type | e.g. `website`, `ecommerce`, `hospitality`, `tours` |
 | `@canonical` | Canonical URL | Full URL |
 | `@topics` | Content topics | Comma-separated |
 | `@contact` | Contact info | Email or URL |
@@ -92,6 +95,7 @@ When a parser processes a `context.txt`, each section produces a document:
   "url": "https://domain.com/context.txt",
   "updated": "2026-02-23",
   "lang": "en",
+  "content_type": "website",
   "topics": ["topic1", "topic2"]
 }
 ```
@@ -108,13 +112,14 @@ When a parser processes a `context.txt`, each section produces a document:
 | `url` | string | Full URL to the context.txt file |
 | `updated` | string | Last update date (YYYY-MM-DD) |
 | `lang` | string | ISO 639-1 language code |
+| `content_type` | string | Content type from metadata if provided |
 | `topics` | array | List of topic strings |
 
 ## Serving Requirements
 
-- Index file must be served at `/context.txt`
+- If web-published, index file must be served at `/context.txt`
 - Content-Type should be `text/plain; charset=utf-8`
-- File should be publicly accessible (no authentication)
+- If web-published, file should be publicly accessible (no authentication)
 - CORS headers recommended: `Access-Control-Allow-Origin: *`
 - File should respond within 2 seconds
 
@@ -213,7 +218,9 @@ Parsers should check `@version` and handle unknown versions gracefully.
 
 ## Engine API Reference
 
-The ProtoContext engine is a search engine for AI agents. It indexes `context.txt` files and serves them with sub-10ms latency.
+The ProtoContext engine is a search engine for AI agents and a site-ingestion layer. It indexes `context.txt` files and supports scraper/AI fallback when `context.txt` is missing.
+
+Typical deterministic fast-path latency target is under `30ms` (environment-dependent).
 
 **Base URL:** `http://localhost:8000` (default Docker setup)
 
@@ -257,6 +264,8 @@ Full-text search across all indexed sites.
 | `q` | string | yes | — | Search query |
 | `domain` | string | no | all | Filter results to a specific domain |
 | `section` | string | no | all | Filter by section slug |
+| `lang` | string | no | all | Filter by language (ISO 639-1) |
+| `content_type` | string | no | all | Filter by metadata content type |
 | `limit` | int | no | 10 | Max results (1-100) |
 | `ai_key` | string | no | — | API key for AI provider (Gemini, OpenAI, or OpenRouter) |
 | `ai_model` | string | no | `gemini/gemini-3-flash-preview` | Model in `provider/model` format |
@@ -269,6 +278,12 @@ curl "http://localhost:8000/search?q=italian+restaurant"
 
 # Search within a specific domain
 curl "http://localhost:8000/search?q=restaurant&domain=www.grandhotelriviera.com"
+
+# Filter by language
+curl "http://localhost:8000/search?q=menu&lang=es"
+
+# Filter by content type
+curl "http://localhost:8000/search?q=suite&content_type=hospitality"
 
 # Limit results
 curl "http://localhost:8000/search?q=spa+wellness&limit=3"
@@ -456,6 +471,9 @@ Execute up to 20 search queries in a single API call.
 | `queries` | array | List of query objects (max 20) |
 | `queries[].q` | string | Search query |
 | `queries[].domain` | string | Optional domain filter |
+| `queries[].lang` | string | Optional language filter |
+| `queries[].content_type` | string | Optional content-type filter |
+| `queries[].section` | string | Optional section slug filter |
 | `queries[].limit` | int | Optional result limit (default: 5) |
 
 **Examples:**
