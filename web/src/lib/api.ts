@@ -325,6 +325,54 @@ export async function submitDomainStream(
 }
 
 // ---------------------------------------------------------------------------
+// Upload raw context.txt
+// ---------------------------------------------------------------------------
+
+export interface UploadResponse {
+  status: string;
+  name: string;
+  sections_indexed: number;
+  source_format: string;
+}
+
+export async function uploadContext(opts: {
+  name: string;
+  content: string;
+}): Promise<UploadResponse> {
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...baseHeaders() },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(err.detail || "Upload failed");
+  }
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Get raw content (for editing)
+// ---------------------------------------------------------------------------
+
+export interface ContentResponse {
+  domain: string;
+  content: string;
+  total_sections: number;
+}
+
+export async function getContent(domain: string): Promise<ContentResponse> {
+  const res = await fetch(`${API_BASE}/content?domain=${encodeURIComponent(domain)}`, {
+    headers: baseHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to load content" }));
+    throw new Error(err.detail || "Failed to load content");
+  }
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
 // Settings (admin AI config, persisted server-side)
 // ---------------------------------------------------------------------------
 

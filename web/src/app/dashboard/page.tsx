@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Globe, Send, BarChart3, Zap, Clock, FileText, Loader2,
-  AlertCircle, CheckCircle2, Settings2, Code2, Copy,
+  AlertCircle, CheckCircle2, Settings2, Code2, Copy, Upload, Pencil,
   Check, Trash2, Terminal, BookOpen, Github, Shield, LogOut, Key, Plus, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,14 @@ export default function Dashboard() {
   const [submitError, setSubmitError] = useState("");
   const [submitProgress, setSubmitProgress] = useState(0);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [submitMode, setSubmitMode] = useState<"url" | "upload">("url");
+
+  // Upload state
+  const [uploadName, setUploadName] = useState("");
+  const [uploadContent, setUploadContent] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<api.UploadResponse | null>(null);
+  const [uploadError, setUploadError] = useState("");
 
   // Delete state
   const [deleteDomainInput, setDeleteDomainInput] = useState("");
@@ -285,6 +293,43 @@ export default function Dashboard() {
       setSubmitError(err instanceof Error ? err.message : "Submit failed");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleUpload(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!uploadName.trim() || !uploadContent.trim()) return;
+
+    setIsUploading(true);
+    setUploadError("");
+    setUploadResult(null);
+
+    try {
+      const res = await api.uploadContext({ name: uploadName, content: uploadContent });
+      setUploadResult(res);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+
+  async function handleEditContent(domain: string) {
+    setIsLoadingEdit(true);
+    try {
+      const res = await api.getContent(domain);
+      setUploadName(domain);
+      setUploadContent(res.content);
+      setUploadResult(null);
+      setUploadError("");
+      setSubmitMode("upload");
+      setActiveTab("submit");
+    } catch (err) {
+      setSiteError(err instanceof Error ? err.message : "Failed to load content for editing");
+    } finally {
+      setIsLoadingEdit(false);
     }
   }
 
@@ -766,12 +811,24 @@ export default function Dashboard() {
               )}
 
               {siteLatency !== null && (
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1 font-mono">
-                    <Zap className="w-3 h-3 text-primary" />
-                    {siteLatency}ms
-                  </span>
-                  <span>{siteTotalSections} sections</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1 font-mono">
+                      <Zap className="w-3 h-3 text-primary" />
+                      {siteLatency}ms
+                    </span>
+                    <span>{siteTotalSections} sections</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    disabled={isLoadingEdit}
+                    onClick={() => handleEditContent(siteDomain)}
+                  >
+                    {isLoadingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Pencil className="w-3 h-3" />}
+                    Edit
+                  </Button>
                 </div>
               )}
 
@@ -784,85 +841,185 @@ export default function Dashboard() {
 
             {/* Submit Tab */}
             <TabsContent value="submit" className="space-y-4">
-              <form onSubmit={handleSubmit} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Send className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="yourdomain.com"
-                    className="pl-9 h-10"
-                    value={submitDomain}
-                    onChange={(e) => setSubmitDomain(e.target.value)}
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <Button type="submit" disabled={isSubmitting || !submitDomain.trim()} className="h-10 px-5">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
-                </Button>
-              </form>
+              {/* Mode toggle */}
+              <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+                <button
+                  onClick={() => setSubmitMode("url")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                    submitMode === "url"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Globe className="w-3 h-3" />
+                  From URL
+                </button>
+                <button
+                  onClick={() => setSubmitMode("upload")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                    submitMode === "upload"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Upload className="w-3 h-3" />
+                  Upload context.txt
+                </button>
+              </div>
 
-              <p className="text-xs text-muted-foreground">
-                Register a domain to the index. Sites with /context.txt work directly. Others need an AI provider to convert content.
-              </p>
+              {/* URL mode (existing) */}
+              {submitMode === "url" && (
+                <>
+                  <form onSubmit={handleSubmit} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Send className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="yourdomain.com"
+                        className="pl-9 h-10"
+                        value={submitDomain}
+                        onChange={(e) => setSubmitDomain(e.target.value)}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isSubmitting || !submitDomain.trim()} className="h-10 px-5">
+                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
+                    </Button>
+                  </form>
 
-              {isSubmitting && (
-                <div className="space-y-2 animate-fade-up">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
-                    <span className="text-xs text-muted-foreground">{submitMessage}</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${submitProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono">
-                    <span>
-                      {submitProgress < 20 && "checking sources..."}
-                      {submitProgress >= 20 && submitProgress < 50 && "fetching content..."}
-                      {submitProgress >= 50 && submitProgress < 75 && "scraping pages..."}
-                      {submitProgress >= 75 && submitProgress < 95 && "converting with AI..."}
-                      {submitProgress >= 95 && "indexing..."}
-                    </span>
-                    <span>{submitProgress}%</span>
-                  </div>
-                </div>
-              )}
+                  <p className="text-xs text-muted-foreground">
+                    Register a domain to the index. Sites with /context.txt work directly. Others need an AI provider to convert content.
+                  </p>
 
-              {submitError && (
-                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  {submitError}
-                </div>
-              )}
-
-              {submitResult && (
-                <Card className="border-primary/20 bg-primary/5 animate-fade-up">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">
-                          {submitResult.status === "registered" ? "Domain registered" : "Already registered"}
-                        </p>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span className="font-mono">{submitResult.domain}</span>
-                          {submitResult.sections_indexed && (
-                            <>
-                              <span>&middot;</span>
-                              <span>{submitResult.sections_indexed} sections</span>
-                            </>
-                          )}
-                          {submitResult.source_format && (
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-mono border-border/40">
-                              {submitResult.source_format}
-                            </Badge>
-                          )}
-                        </div>
+                  {isSubmitting && (
+                    <div className="space-y-2 animate-fade-up">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
+                        <span className="text-xs text-muted-foreground">{submitMessage}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${submitProgress}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-muted-foreground/60 font-mono">
+                        <span>
+                          {submitProgress < 20 && "checking sources..."}
+                          {submitProgress >= 20 && submitProgress < 50 && "fetching content..."}
+                          {submitProgress >= 50 && submitProgress < 75 && "scraping pages..."}
+                          {submitProgress >= 75 && submitProgress < 95 && "converting with AI..."}
+                          {submitProgress >= 95 && "indexing..."}
+                        </span>
+                        <span>{submitProgress}%</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  )}
+
+                  {submitError && (
+                    <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {submitError}
+                    </div>
+                  )}
+
+                  {submitResult && (
+                    <Card className="border-primary/20 bg-primary/5 animate-fade-up">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">
+                              {submitResult.status === "registered" ? "Domain registered" : "Already registered"}
+                            </p>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span className="font-mono">{submitResult.domain}</span>
+                              {submitResult.sections_indexed && (
+                                <>
+                                  <span>&middot;</span>
+                                  <span>{submitResult.sections_indexed} sections</span>
+                                </>
+                              )}
+                              {submitResult.source_format && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-mono border-border/40">
+                                  {submitResult.source_format}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+
+              {/* Upload mode (new) */}
+              {submitMode === "upload" && (
+                <>
+                  <form onSubmit={handleUpload} className="space-y-3">
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Name (e.g. hotelRoma, my-notes, product-catalog)"
+                        className="pl-9 h-10"
+                        value={uploadName}
+                        onChange={(e) => setUploadName(e.target.value)}
+                        disabled={isUploading}
+                      />
+                    </div>
+                    <textarea
+                      placeholder={`# My Content\n> Description of this content\n\n@lang: en\n@version: 1.0\n@updated: 2026-02-24\n\n## section: Overview\nYour content here...`}
+                      className="w-full h-48 px-3 py-2 text-sm font-mono bg-background border border-input rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
+                      value={uploadContent}
+                      onChange={(e) => setUploadContent(e.target.value)}
+                      disabled={isUploading}
+                    />
+                    <Button
+                      type="submit"
+                      disabled={isUploading || !uploadName.trim() || !uploadContent.trim()}
+                      className="h-10 px-5"
+                    >
+                      {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        <span className="flex items-center gap-2">
+                          <Upload className="w-4 h-4" />
+                          Upload
+                        </span>
+                      )}
+                    </Button>
+                  </form>
+
+                  <p className="text-xs text-muted-foreground">
+                    Upload raw context.txt content with a custom name. The name acts as an identifier for searching and filtering. Same name = overwrite.
+                  </p>
+
+                  {uploadError && (
+                    <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {uploadError}
+                    </div>
+                  )}
+
+                  {uploadResult && (
+                    <Card className="border-primary/20 bg-primary/5 animate-fade-up">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Content uploaded</p>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span className="font-mono">{uploadResult.name}</span>
+                              <span>&middot;</span>
+                              <span>{uploadResult.sections_indexed} sections indexed</span>
+                              <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-mono border-border/40">
+                                upload
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
             </TabsContent>
 

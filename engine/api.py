@@ -343,6 +343,10 @@ class SubmitRequest(BaseModel):
     ai_key: Optional[str] = None
     ai_model: Optional[str] = None
 
+class UploadRequest(BaseModel):
+    name: str
+    content: str
+
 class SearchResult(BaseModel):
     domain: str
     section: str
@@ -751,6 +755,135 @@ async def submit_stream_endpoint(request: SubmitRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post("/upload")
+async def upload_endpoint(request: UploadRequest):
+    """
+    Upload raw context.txt content with a custom name.
+
+    This turns ProtoContext into a RAG system: upload any structured content
+    and search it later by name. The name acts as a virtual domain.
+
+    - If the name already exists, its content is replaced (upsert).
+    - Content must be valid context.txt format (header + metadata + sections).
+    """
+    import re
+
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    # Slugify: lowercase, replace spaces/special chars with hyphens
+    name = re.sub(r"[^a-z0-9\-]", "-", name.lower())
+    name = re.sub(r"-+", "-", name).strip("-")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name must contain at least one alphanumeric character")
+
+    content = request.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Content is required")
+
+    # Parse the content (name is used as the "domain" field)
+    result = parse(content, name)
+
+    if not result or not result["documents"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid context.txt format. Content must have a # Title, > Description, @metadata, and at least one ## section: block.",
+        )
+
+    # If name already exists, delete old documents first (upsert)
+    if name in _get_registry():
+        try:
+            delete_domain(name)
+        except Exception:
+            pass
+    else:
+        _registry_add(name)
+
+    # Index the new documents
+    index_documents(result["documents"])
+    domain_fetch_times[name] = datetime.now(timezone.utc)
+    _cache_invalidate_domain(name)
+
+    logger.info(f"Uploaded context for '{name}': {len(result['documents'])} sections")
+
+    return {
+        "status": "uploaded",
+        "name": name,
+        "sections_indexed": len(result["documents"]),
+        "source_format": "upload",
+    }
+
+
+@app.get("/content")
+async def content_endpoint(
+    domain: str = Query(..., description="Domain or name to retrieve raw content for"),
+):
+    """
+    Reconstruct context.txt content from indexed sections.
+
+    Returns the raw text content that can be edited and re-uploaded.
+    Works with both real domains and custom upload names.
+    """
+    domain = domain.strip().replace("https://", "").replace("http://", "").rstrip("/")
+    if not domain:
+        raise HTTPException(status_code=400, detail="Domain is required")
+
+    try:
+        result = engine_search(query="", domain=domain, limit=100)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search error: {e}")
+
+    hits = result.get("hits", [])
+    if not hits:
+        raise HTTPException(status_code=404, detail=f"No content found for {domain}")
+
+    # Reconstruct context.txt from sections
+    first = hits[0]
+    lang = first.get("lang", "en")
+    updated = first.get("updated", "")
+    topics_set: set[str] = set()
+    content_type = first.get("content_type", "website")
+
+    lines: list[str] = []
+
+    # Header — use domain/name as title
+    title = first.get("title", domain)
+    lines.append(f"# {domain}")
+    lines.append(f"> Content for {domain}")
+    lines.append("")
+
+    # Metadata
+    lines.append(f"@lang: {lang}")
+    lines.append("@version: 1.0")
+    if updated:
+        lines.append(f"@updated: {updated}")
+    for h in hits:
+        for t in h.get("topics", []):
+            topics_set.add(t)
+    if topics_set:
+        lines.append(f"@topics: {', '.join(sorted(topics_set))}")
+    if content_type and content_type != "website":
+        lines.append(f"@content_type: {content_type}")
+    lines.append("")
+
+    # Sections
+    for h in hits:
+        section_title = h.get("title", "Untitled")
+        body = h.get("body", "")
+        lines.append(f"## section: {section_title}")
+        lines.append("")
+        lines.append(body)
+        lines.append("")
+
+    return {
+        "domain": domain,
+        "content": "\n".join(lines).strip(),
+        "total_sections": len(hits),
+    }
 
 
 class DeleteRequest(BaseModel):

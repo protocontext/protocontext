@@ -21,6 +21,3 @@ data/
 
 # IDE / tools
 .claude/
-
-# Deploy configs (may contain secrets)
-.do/

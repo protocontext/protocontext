@@ -110,7 +110,17 @@ protocontext/
 
 ProtoContext includes a **search engine for the agent era** — indexes `context.txt` files across the web and serves structured results with sub-10ms latency.
 
-### Run It
+### Deploy
+
+<div align="center">
+
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/protocontext/protocontext/tree/main)
+&nbsp;&nbsp;
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/protocontext)
+
+</div>
+
+### Run Locally
 
 ```bash
 cd engine
@@ -433,6 +443,24 @@ npm install
 npm run dev
 
 # 3. Open http://localhost:3000 and complete setup
+```
+
+### Expose via Cloudflare Tunnel (optional)
+
+Share your local instance with the internet (useful for n8n, external MCP clients, testing):
+
+```bash
+# From the project root
+./tunnel.sh
+# → https://random-words.trycloudflare.com
+```
+
+The script handles a common pitfall: if you have an existing `~/.cloudflared/config.yml` (named tunnels, ingress rules), it would override the quick tunnel and cause 404s. The script uses `--config /dev/null` to bypass this cleanly.
+
+You can also tunnel a specific port:
+
+```bash
+./tunnel.sh 3000   # tunnel the dashboard instead
 ```
 
 ### Environment Variables
