@@ -4,7 +4,7 @@
 
 **Deterministic knowledge layer for RAG systems.**
 
-Open standard + search engine + optional semantic retrieval for AI-readable web content.
+Open standard + search engine + semantic retrieval for AI-readable web content.
 
 ProtoContext lets AI agents read structured knowledge from `context.txt` instead of depending only on raw HTML scraping and fully probabilistic retrieval pipelines. You can publish `context.txt` on your domain, or upload structured context directly from the dashboard (no URL required).  
 
