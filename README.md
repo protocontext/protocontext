@@ -16,8 +16,10 @@ Website: https://protocontext.org/
 [![Engine v0.1.1-beta](https://img.shields.io/badge/engine-v0.1.1--beta-10b981?style=flat-square)](engine/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-10b981?style=flat-square)](LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-10b981?style=flat-square)](mcp-server/)
+[![n8n Node](https://img.shields.io/badge/n8n-community%20node-ff6d5a?style=flat-square)](https://www.npmjs.com/package/n8n-nodes-protocontext)
+[![npm](https://img.shields.io/npm/v/n8n-nodes-protocontext?style=flat-square&color=10b981)](https://www.npmjs.com/package/n8n-nodes-protocontext)
 
-[Specification](SPEC.md) &bull; [Quick Start](#quick-start) &bull; [Search Engine](#search-engine)
+[Specification](SPEC.md) &bull; [Quick Start](#quick-start) &bull; [Search Engine](#search-engine) &bull; [n8n Node](#n8n-node)
 
 </div>
 
@@ -120,6 +122,39 @@ Common filters: `domain`, `lang`, `content_type`, `section`, `limit`.
 
 ---
 
+## n8n Node
+
+Community node for [n8n](https://n8n.io) — use ProtoContext as a workflow node or as an AI Agent tool.
+
+### Install
+
+In n8n: **Settings → Community Nodes → Install** → `n8n-nodes-protocontext`
+
+Or manually:
+
+```bash
+cd ~/.n8n/nodes && npm install n8n-nodes-protocontext
+```
+
+### Operations
+
+| Operation | Description |
+|---|---|
+| **Search** | Search across all indexed content |
+| **Get Site** | Get all sections for a domain |
+| **Submit Domain** | Submit a domain for indexing |
+| **Upload Content** | Upload raw context.txt |
+| **Delete Domain** | Remove a domain from the index |
+| **Stats** | Index statistics |
+
+### AI Agent Tool
+
+Connect the ProtoContext node to the **tools** input of an AI Agent node. The agent will use it to search and retrieve structured knowledge automatically.
+
+📦 [npm package](https://www.npmjs.com/package/n8n-nodes-protocontext)
+
+---
+
 ## Architecture
 
 ```txt
@@ -127,6 +162,7 @@ protocontext/
 ├── engine/             # API + indexer + crawler/scraper + auth
 ├── web/                # Dashboard (search, submit, setup, settings)
 ├── mcp-server/         # MCP tools for AI agents
+├── n8n-node/           # n8n community node (workflow + AI Agent tool)
 ├── validator/          # context.txt validation
 ├── wordpress-plugin/   # WordPress + WooCommerce integration
 ├── examples/           # Example context files
