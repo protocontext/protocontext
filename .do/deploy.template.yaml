@@ -14,7 +14,8 @@ spec:
       instance_count: 1
       instance_size_slug: apps-s-1vcpu-0.5gb
       routes:
-        - path: /
+        - path: /api
+          preserve_path_prefix: true
       envs:
         - key: TYPESENSE_URL
           value: "http://typesense:8108"
@@ -24,6 +25,25 @@ spec:
           value: "${typesense.TYPESENSE_API_KEY}"
           scope: RUN_TIME
           type: SECRET
+
+    - name: dashboard
+      dockerfile_path: web/Dockerfile
+      source_dir: /web
+      github:
+        repo: protocontext/protocontext
+        branch: main
+        deploy_on_push: true
+      http_port: 3000
+      instance_count: 1
+      instance_size_slug: apps-s-1vcpu-0.5gb
+      build_command: ""
+      routes:
+        - path: /
+      envs:
+        - key: NEXT_PUBLIC_API_URL
+          value: "${api.PUBLIC_URL}"
+          scope: BUILD_TIME
+          type: GENERAL
 
   workers:
     - name: typesense
