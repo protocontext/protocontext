@@ -17,7 +17,7 @@ Website: https://protocontext.org/
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-10b981?style=flat-square)](LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-10b981?style=flat-square)](mcp-server/)
 
-[Specification](SPEC.md) &bull; [Quick Start](#quick-start) &bull; [Search Engine](#search-engine) &bull; [MCP Server](#mcp-server)
+[Specification](SPEC.md) &bull; [Quick Start](#quick-start) &bull; [Search Engine](#search-engine)
 
 </div>
 
