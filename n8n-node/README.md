@@ -21,8 +21,8 @@ npm install n8n-nodes-protocontext
 ## Setup
 
 1. Add a **ProtoContext API** credential with:
-   - **API URL**: Your ProtoContext instance URL (e.g. `https://protocolcontext.com`)
-   - **API Token**: Your session token or API key
+   - **API URL**: Your ProtoContext instance URL
+   - **API Token**: Your API token
 
 2. Add the **ProtoContext** node to your workflow
 
