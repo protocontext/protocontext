@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as api from "@/lib/api";
+import { ContextEditor } from "@/components/dashboard/editor/ContextEditor";
 
 const PROVIDERS = [
     { value: "none", label: "No AI (context.txt only)" },
@@ -322,11 +323,9 @@ export function SubmitPanel({ initialMode = "url", initialUploadName = "", initi
                                 disabled={isUploading}
                             />
                         </div>
-                        <textarea
-                            placeholder={`# My Content\n> Description of this content\n\n@lang: en\n@version: 1.0\n@updated: 2026-02-27\n\n## section: Overview\nYour content here...`}
-                            className="w-full h-48 px-3 py-2 text-sm font-mono bg-background border border-input rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
+                        <ContextEditor
                             value={uploadContent}
-                            onChange={(e) => setUploadContent(e.target.value)}
+                            onChange={setUploadContent}
                             disabled={isUploading}
                         />
                         <Button type="submit" disabled={isUploading || !uploadName.trim() || !uploadContent.trim()} className="h-10 px-5">
