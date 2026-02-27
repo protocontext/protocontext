@@ -9,3 +9,4 @@ trafilatura>=2.0.0
 readability-lxml>=0.8.4
 markdownify>=0.13.0
 slowapi>=0.1.9
+playwright>=1.40.0

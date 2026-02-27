@@ -29,6 +29,9 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger("protocontext.scraper")
 
+# Limit concurrent browser instances to avoid OOM in Docker (~300MB each)
+_BROWSER_SEMAPHORE = asyncio.Semaphore(2)
+
 USER_AGENT = "ProtoContext-Crawler/1.0"
 SITEMAP_TIMEOUT = 10.0
 PAGE_TIMEOUT = 8.0
@@ -474,6 +477,65 @@ def _is_content_url(url: str) -> bool:
     return True
 
 
+def _is_blocked(resp: httpx.Response) -> bool:
+    """Detect WAF/bot-challenge responses that httpx cannot resolve."""
+    s, h = resp.status_code, resp.headers
+    # AWS WAF challenge (returns 202 + action header)
+    if s == 202 and h.get("x-amzn-waf-action") == "challenge":
+        return True
+    # Cloudflare block / JS challenge
+    if s in (403, 503) and ("cf-ray" in h or "cf-mitigated" in h):
+        return True
+    return False
+
+
+async def _scrape_with_browser(url: str) -> Optional[str]:
+    """
+    Playwright headless fallback for sites that block httpx (AWS WAF, Cloudflare, JS SPAs).
+    Requires `playwright install chromium` at build time.
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        logger.warning("Playwright not installed — cannot scrape JS-heavy/WAF-protected site")
+        return None
+
+    async with _BROWSER_SEMAPHORE:
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
+                )
+                ctx = await browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                    locale="en-US",
+                    viewport={"width": 1280, "height": 800},
+                )
+                page = await ctx.new_page()
+                await page.goto(url, wait_until="networkidle", timeout=30_000)
+                html = await page.content()
+                await browser.close()
+
+            result = await asyncio.to_thread(_extract_text_from_html, html)
+            if result:
+                logger.info(f"Browser scraping OK: {url} ({len(result)} chars)")
+            return result
+
+        except Exception as e:
+            logger.warning(f"Browser scraping failed for {url}: {e}")
+            return None
+
+
 async def scrape_page_content(
     url: str,
     client: httpx.AsyncClient,
@@ -490,6 +552,11 @@ async def scrape_page_content(
             follow_redirects=True,
         )
 
+        # WAF/bot challenge → httpx can't resolve, fall back to browser
+        if _is_blocked(resp):
+            logger.info(f"WAF/bot block ({resp.status_code}), trying browser: {url}")
+            return await _scrape_with_browser(url)
+
         if resp.status_code != 200:
             return None
 
@@ -504,7 +571,14 @@ async def scrape_page_content(
 
         html = resp.text
         # Run CPU-heavy HTML parsing in thread pool to avoid blocking the event loop
-        return await asyncio.to_thread(_extract_text_from_html, html)
+        result = await asyncio.to_thread(_extract_text_from_html, html)
+
+        # JS-rendered SPA: server returned substantial HTML but trafilatura extracted nothing
+        if result is None and len(resp.content) > 10_000:
+            logger.info(f"JS SPA detected ({len(resp.content)}b HTML, no text), trying browser: {url}")
+            return await _scrape_with_browser(url)
+
+        return result
 
     except (httpx.TimeoutException, httpx.RequestError):
         return None
