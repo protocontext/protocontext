@@ -16,7 +16,6 @@ class ProtoContext_Admin {
         add_action('update_option_protocontext_settings', [$this, 'on_settings_update'], 10, 0);
         add_action('update_option_protocontext_sections', [$this, 'on_settings_update'], 10, 0);
         add_action('wp_ajax_protocontext_preview', [$this, 'ajax_preview']);
-        add_action('wp_ajax_protocontext_add_section', [$this, 'ajax_add_section']);
     }
 
     /**

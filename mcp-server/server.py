@@ -20,6 +20,7 @@ Usage (SSE, for remote access):
 """
 
 import sys
+import os
 import logging
 from typing import Optional
 
@@ -30,7 +31,8 @@ import httpx
 # Config
 # ---------------------------------------------------------------------------
 
-API_BASE = "https://api.protocontext.org"
+API_BASE = os.environ.get("PROTOCONTEXT_API_BASE", "https://api.protocontext.org")
+API_TOKEN = os.environ.get("PROTOCONTEXT_API_TOKEN", os.environ.get("PROTO_API_TOKEN", "")).strip()
 TIMEOUT = 30.0
 
 # Logging goes to stderr so it doesn't corrupt the stdio JSON-RPC stream
@@ -54,16 +56,22 @@ mcp = FastMCP("protocontext")
 
 async def _get(path: str, params: dict | None = None, headers: dict | None = None) -> dict:
     """Make a GET request to the ProtoContext API."""
+    req_headers = dict(headers or {})
+    if API_TOKEN:
+        req_headers["x-proto-token"] = API_TOKEN
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        r = await client.get(f"{API_BASE}{path}", params=params, headers=headers)
+        r = await client.get(f"{API_BASE}{path}", params=params, headers=req_headers or None)
         r.raise_for_status()
         return r.json()
 
 
 async def _post(path: str, json: dict, headers: dict | None = None) -> dict:
     """Make a POST request to the ProtoContext API."""
+    req_headers = dict(headers or {})
+    if API_TOKEN:
+        req_headers["x-proto-token"] = API_TOKEN
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        r = await client.post(f"{API_BASE}{path}", json=json, headers=headers)
+        r = await client.post(f"{API_BASE}{path}", json=json, headers=req_headers or None)
         r.raise_for_status()
         return r.json()
 
@@ -319,6 +327,11 @@ async def protocontext_stats() -> str:
 def main():
     """Run the ProtoContext MCP server."""
     transport = "stdio"
+
+    if API_TOKEN:
+        logger.info("Auth enabled via PROTOCONTEXT_API_TOKEN/PROTO_API_TOKEN")
+    else:
+        logger.warning("No API token configured (PROTOCONTEXT_API_TOKEN/PROTO_API_TOKEN). Protected endpoints may fail.")
 
     # Check for --sse flag for remote mode
     if "--sse" in sys.argv:

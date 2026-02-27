@@ -62,3 +62,9 @@ Once connected, your AI agent can:
 The MCP server connects to the public ProtoContext API at `https://api.protocontext.org`. No API key required for searching indexed sites.
 
 For submitting sites without `/context.txt`, an AI provider key is needed (Gemini, OpenAI, or OpenRouter).
+
+## Environment Variables
+
+- `PROTOCONTEXT_API_BASE` (optional): Base URL of your ProtoContext API.
+- `PROTOCONTEXT_API_TOKEN` (optional): Token sent as `x-proto-token` for protected instances.
+  - Backward compatible: `PROTO_API_TOKEN` is also supported.

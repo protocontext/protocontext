@@ -55,7 +55,7 @@ from parser import parse, is_context_format, is_llms_format
 from crawler import fetch_context, load_registry, crawl_all, _try_fetch_path, _extract_root_domain, FETCH_PATHS, USER_AGENT, FETCH_TIMEOUT
 from converter import fetch_and_convert, convert_scraped_to_context, _detect_language
 from scraper import scrape_site_content, fetch_sitemap_urls, scrape_page_content, _filter_best_language_urls, _is_content_url, _path_to_title, _crawl_internal_links, MAX_PAGES
-from indexer import get_client, setup_index, index_documents, delete_domain, search as engine_search, get_stats
+from indexer import get_client, setup_index, index_documents, delete_domain, search as engine_search, get_stats, COLLECTION_NAME
 import auth
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
