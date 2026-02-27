@@ -2,6 +2,22 @@
 
 All notable changes to ProtoContext will be documented in this file.
 
+## [Unreleased] - 2026-02-27
+
+### Added
+- **Analytics panel**: new dashboard section with query history feed, top queries bar chart, top domains bar chart, index overview with cache hit rate, and session summary. History stored client-side in `localStorage`.
+- **`src/lib/history.ts`**: client-side history module with `logHistory`, `getHistory`, `getTopQueries`, `getTopDomains`, `getAvgLatency`, `clearHistory` helpers.
+
+### Changed
+- **Dashboard refactor**: split `page.tsx` (1578 lines) into 14 focused components under `src/components/dashboard/`.
+  - `Sidebar.tsx` — left sidebar nav with active state, collapsible AI settings, footer links/logout
+  - `panels/SearchPanel.tsx`, `SitePanel.tsx`, `SubmitPanel.tsx`, `DeletePanel.tsx`, `KeysPanel.tsx`, `StatsPanel.tsx`, `ApiReferencePanel.tsx`, `AnalyticsPanel.tsx`
+  - `shared/ResultCard.tsx`, `StatCard.tsx`, `CodeBlock.tsx`, `ApiEndpoint.tsx`
+- Layout changed from horizontal tabs to sidebar + main content area with mobile hamburger menu.
+- AI provider settings moved from top toolbar into collapsible sidebar section.
+- `StatsPanel` expanded with two-column detail view (index detail + health cards).
+- Search and Site queries now log to local history for analytics.
+
 ## [0.1.1-beta] - 2026-02-24
 
 ### Added
