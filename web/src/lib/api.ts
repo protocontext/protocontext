@@ -373,6 +373,17 @@ export async function getContent(domain: string): Promise<ContentResponse> {
 }
 
 // ---------------------------------------------------------------------------
+// List all indexed domains
+// ---------------------------------------------------------------------------
+
+export async function listDomains(): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/list`, { headers: baseHeaders() });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.domains ?? [];
+}
+
+// ---------------------------------------------------------------------------
 // Settings (admin AI config, persisted server-side)
 // ---------------------------------------------------------------------------
 

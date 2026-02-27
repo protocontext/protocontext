@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sidebar, type PanelId } from "@/components/dashboard/Sidebar";
 import { SearchPanel } from "@/components/dashboard/panels/SearchPanel";
 import { SitePanel } from "@/components/dashboard/panels/SitePanel";
-import { SubmitPanel } from "@/components/dashboard/panels/SubmitPanel";
+import { ScraperPanel } from "@/components/dashboard/panels/ScraperPanel";
+import { EditorPanel } from "@/components/dashboard/panels/EditorPanel";
 import { DeletePanel } from "@/components/dashboard/panels/DeletePanel";
 import { KeysPanel } from "@/components/dashboard/panels/KeysPanel";
 import { ApiReferencePanel } from "@/components/dashboard/panels/ApiReferencePanel";
@@ -33,10 +34,9 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
 
-  // Cross-panel edit flow: Site → Submit
-  const [submitMode, setSubmitMode] = useState<"url" | "upload">("url");
-  const [uploadName, setUploadName] = useState("");
-  const [uploadContent, setUploadContent] = useState("");
+  // Cross-panel edit flow: Site → Editor
+  const [editorName, setEditorName] = useState("");
+  const [editorContent, setEditorContent] = useState("");
 
   async function handleLogout() {
     await api.authLogout();
@@ -55,10 +55,9 @@ export default function Dashboard() {
 
   async function handleEditContent(domain: string) {
     const res = await api.getContent(domain);
-    setUploadName(res.domain);
-    setUploadContent(res.content);
-    setSubmitMode("upload");
-    setActivePanel("submit");
+    setEditorName(res.domain);
+    setEditorContent(res.content);
+    setActivePanel("editor");
   }
 
   if (apiUnreachable) {
@@ -178,11 +177,11 @@ export default function Dashboard() {
             {/* Active panel */}
             {activePanel === "search" && <SearchPanel />}
             {activePanel === "site" && <SitePanel onEditContent={handleEditContent} />}
-            {activePanel === "submit" && (
-              <SubmitPanel
-                initialMode={submitMode}
-                initialUploadName={uploadName}
-                initialUploadContent={uploadContent}
+            {activePanel === "scraper" && <ScraperPanel />}
+            {activePanel === "editor" && (
+              <EditorPanel
+                initialName={editorName}
+                initialContent={editorContent}
               />
             )}
             {activePanel === "delete" && <DeletePanel />}

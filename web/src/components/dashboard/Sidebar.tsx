@@ -1,13 +1,14 @@
 "use client";
 
 import {
-    Search, Globe, Send, Trash2, Key, Code2, BarChart3, BarChart2,
-    Terminal, BookOpen, Github, LogOut, ChevronRight,
+    Search, Globe, Scan, FileEdit, Trash2, Key, Code2, BarChart3, BarChart2,
+    Terminal, BookOpen, Github, LogOut, ChevronRight, Sun, Moon,
 } from "lucide-react";
 import React from "react";
+import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 
-export type PanelId = "search" | "site" | "submit" | "delete" | "keys" | "api" | "stats" | "analytics";
+export type PanelId = "search" | "site" | "scraper" | "editor" | "delete" | "keys" | "api" | "stats" | "analytics";
 
 interface NavItem {
     id: PanelId;
@@ -18,8 +19,9 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
     { id: "search", label: "Search", icon: <Search className="w-4 h-4" /> },
-    { id: "site", label: "Site", icon: <Globe className="w-4 h-4" /> },
-    { id: "submit", label: "Submit", icon: <Send className="w-4 h-4" /> },
+    { id: "site", label: "Sites", icon: <Globe className="w-4 h-4" /> },
+    { id: "scraper", label: "Scraper", icon: <Scan className="w-4 h-4" /> },
+    { id: "editor", label: "Editor", icon: <FileEdit className="w-4 h-4" /> },
     { id: "delete", label: "Delete", icon: <Trash2 className="w-4 h-4" /> },
     { id: "keys", label: "API Keys", icon: <Key className="w-4 h-4" />, adminOnly: true },
     { id: "api", label: "API Reference", icon: <Code2 className="w-4 h-4" /> },
@@ -35,7 +37,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activePanel, onSelect, legacyMode, onLogout }: SidebarProps) {
-    const visibleItems = NAV_ITEMS.filter(item => !item.adminOnly || !legacyMode);
+    const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || !legacyMode);
+    const { theme, setTheme } = useTheme();
 
     return (
         <aside className="w-56 shrink-0 h-screen sticky top-0 flex flex-col border-r border-border/40 bg-background/95 backdrop-blur-sm">
@@ -80,6 +83,19 @@ export function Sidebar({ activePanel, onSelect, legacyMode, onLogout }: Sidebar
 
             {/* Footer */}
             <div className="px-2 pb-3 pt-2 border-t border-border/40 space-y-0.5">
+                {/* Dark/Light toggle */}
+                <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+                >
+                    {theme === "dark" ? (
+                        <Sun className="w-3.5 h-3.5" />
+                    ) : (
+                        <Moon className="w-3.5 h-3.5" />
+                    )}
+                    {theme === "dark" ? "Light mode" : "Dark mode"}
+                </button>
+
                 <a href="https://github.com/protocontext/protocontext" target="_blank" rel="noopener noreferrer">
                     <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
                         <Github className="w-3.5 h-3.5" />

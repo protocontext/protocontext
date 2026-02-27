@@ -942,6 +942,12 @@ async def delete_endpoint(request: DeleteRequest):
     }
 
 
+@app.get("/list")
+async def list_endpoint():
+    """Return all registered/indexed domains sorted alphabetically."""
+    return {"domains": sorted(_get_registry())}
+
+
 @app.get("/stats")
 async def stats_endpoint():
     """Get engine statistics."""
