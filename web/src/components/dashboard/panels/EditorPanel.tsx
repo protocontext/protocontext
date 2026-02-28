@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, RefreshCw, Search } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import * as api from "@/lib/api";
 import { AiSettingsSection, useAiSettings } from "@/components/dashboard/shared/AiSettingsSection";
-import { ContextEditor } from "@/components/dashboard/editor/ContextEditor";
 
 interface EditorPanelProps {
     /** Pre-fill domain + content (e.g. from "Edit" flow in SitePanel) */
@@ -15,13 +14,25 @@ interface EditorPanelProps {
     initialContent?: string;
 }
 
+function normalizeDomainLike(input: string): string {
+    return input.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+}
+
+function looksLikeDomain(input: string): boolean {
+    return input.includes(".");
+}
+
 export function EditorPanel({ initialName = "", initialContent = "" }: EditorPanelProps) {
     const { provider, setProvider, aiKey, setAiKey, aiModel, setAiModel } = useAiSettings();
 
     // All indexed domains for the selector
     const [domains, setDomains] = useState<string[]>([]);
+    const [isLoadingDomains, setIsLoadingDomains] = useState(false);
+    const [domainsError, setDomainsError] = useState("");
     const [domainSearch, setDomainSearch] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
+    const [searchMatches, setSearchMatches] = useState<string[]>([]);
+    const [isFindingSites, setIsFindingSites] = useState(false);
 
     // Editor state
     const [name, setName] = useState(initialName);
@@ -34,28 +45,118 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
     const [uploadResult, setUploadResult] = useState<api.UploadResponse | null>(null);
     const [uploadError, setUploadError] = useState("");
 
+    const loadDomains = useCallback(async () => {
+        setIsLoadingDomains(true);
+        setDomainsError("");
+        try {
+            const list = await api.listDomains();
+            setDomains(list);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Failed to load indexed sites";
+            if (message.toLowerCase().includes("not found")) {
+                // Older engines may not expose /list; keep editor usable without noisy errors.
+                setDomains([]);
+                setDomainsError("");
+                return;
+            }
+            setDomainsError(message);
+        } finally {
+            setIsLoadingDomains(false);
+        }
+    }, []);
+
     // Load domain list on mount
     useEffect(() => {
-        api.listDomains().then(setDomains).catch(() => {});
-    }, []);
+        loadDomains();
+    }, [loadDomains]);
 
     const filteredDomains = domainSearch
         ? domains.filter((d) => d.toLowerCase().includes(domainSearch.toLowerCase()))
         : domains;
 
+    async function findSitesByKeyword(term: string): Promise<string[]> {
+        const query = term.trim();
+        if (!query) return [];
+
+        setIsFindingSites(true);
+        setLoadError("");
+        try {
+            const res = await api.search({ q: query, limit: 30 });
+            const counts: Record<string, number> = {};
+            for (const hit of res.results) {
+                const d = hit.domain?.trim();
+                if (!d) continue;
+                counts[d] = (counts[d] || 0) + 1;
+            }
+            const matches = Object.entries(counts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([domain]) => domain);
+
+            setSearchMatches(matches);
+            if (matches.length > 0) {
+                setDomains((prev) => Array.from(new Set([...matches, ...prev])));
+                setShowDropdown(true);
+            } else {
+                setLoadError(`No sites found matching "${query}".`);
+            }
+
+            return matches;
+        } catch (err) {
+            setLoadError(err instanceof Error ? err.message : "Failed to find sites");
+            return [];
+        } finally {
+            setIsFindingSites(false);
+        }
+    }
+
     async function loadDomainContent(domain: string) {
-        if (!domain.trim()) return;
+        const normalized = normalizeDomainLike(domain);
+        if (!normalized) return;
         setIsLoading(true);
         setLoadError("");
         try {
-            const res = await api.getContent(domain);
+            const res = await api.getContent(normalized);
             setContent(res.content);
-            setName(domain);
+            setName(res.domain);
+            setDomainSearch("");
+            setSearchMatches([]);
             setUploadResult(null);
         } catch (err) {
-            setLoadError(err instanceof Error ? err.message : "Failed to load content");
+            const message = err instanceof Error ? err.message : "Failed to load content";
+
+            // If the user typed a keyword (not a domain), discover matching domains and help them pick one.
+            if (!looksLikeDomain(normalized) && message.toLowerCase().includes("no content found")) {
+                const matches = await findSitesByKeyword(normalized);
+                if (matches.length === 1 && matches[0] !== normalized) {
+                    await loadDomainContent(matches[0]);
+                    return;
+                }
+                if (matches.length > 1) {
+                    setLoadError(`Found ${matches.length} matching sites. Pick one from the suggestions below.`);
+                    return;
+                }
+            }
+
+            setLoadError(message);
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    async function handleFind() {
+        const term = (domainSearch || name).trim();
+        if (!term) return;
+
+        if (looksLikeDomain(term)) {
+            await loadDomainContent(term);
+            return;
+        }
+
+        const matches = await findSitesByKeyword(term);
+        if (matches.length === 1) {
+            await loadDomainContent(matches[0]);
+        } else if (matches.length > 1) {
+            setLoadError(`Found ${matches.length} matching sites. Pick one from the suggestions below.`);
         }
     }
 
@@ -68,8 +169,10 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
         try {
             const res = await api.uploadContext({ name, content });
             setUploadResult(res);
+            setName(res.name);
+            setDomainSearch("");
             // Refresh domain list
-            api.listDomains().then(setDomains).catch(() => {});
+            await loadDomains();
         } catch (err) {
             setUploadError(err instanceof Error ? err.message : "Upload failed");
         } finally {
@@ -94,7 +197,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                 onProviderChange={setProvider}
                 onAiKeyChange={setAiKey}
                 onAiModelChange={setAiModel}
-                description="AI key is used by the in-editor AI assistant (⌘+J). Set the key to enable AI-powered writing."
+                description="AI key used for scraping sites without /context.txt (same key as Scraper panel)."
             />
 
             {/* Site selector */}
@@ -109,6 +212,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                             onChange={(e) => {
                                 setDomainSearch(e.target.value);
                                 setName(e.target.value);
+                                setSearchMatches([]);
                                 setShowDropdown(true);
                             }}
                             onFocus={() => setShowDropdown(true)}
@@ -134,26 +238,60 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                         )}
                     </div>
                     <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         className="h-9 px-3 gap-1.5 shrink-0"
-                        onClick={() => loadDomainContent(name)}
-                        disabled={!name.trim() || isLoading}
+                        onClick={handleFind}
+                        disabled={isFindingSites || isLoading || !(domainSearch || name).trim()}
+                        title="Find site and load content"
                     >
-                        {isLoading ? (
+                        {(isFindingSites || isLoading) ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                            <RefreshCw className="w-3.5 h-3.5" />
+                            <Search className="w-3.5 h-3.5" />
                         )}
-                        Load
+                        Find
                     </Button>
                 </div>
+
+                {domainsError && (
+                    <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded-lg px-3 py-2">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {domainsError}
+                    </div>
+                )}
 
                 {loadError && (
                     <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded-lg px-3 py-2">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {loadError}
                     </div>
+                )}
+
+                {searchMatches.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {searchMatches.slice(0, 12).map((d) => (
+                            <button
+                                key={d}
+                                type="button"
+                                className="text-[11px] font-mono px-2 py-1 rounded-md border border-border/50 hover:bg-muted/50 transition-colors"
+                                onClick={() => {
+                                    setName(d);
+                                    setDomainSearch("");
+                                    loadDomainContent(d);
+                                }}
+                            >
+                                {d}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {!isLoadingDomains && !domainsError && domains.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground">
+                        No indexed sites yet. Submit or upload one first.
+                    </p>
                 )}
             </div>
 
@@ -169,13 +307,14 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                 />
             </div>
 
-            {/* Plate.js Rich-text Editor */}
-            <ContextEditor
+            {/* Plain textarea editor */}
+            <textarea
+                className="w-full h-[480px] resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="# Title&#10;> Description&#10;&#10;## section: Introduction&#10;Write your content here..."
                 value={content}
-                onChange={setContent}
+                onChange={(e) => setContent(e.target.value)}
                 disabled={isUploading}
-                apiKey={aiKey}
-                model={aiModel}
+                spellCheck={false}
             />
 
             <div className="flex items-center gap-3">
