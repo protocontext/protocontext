@@ -141,8 +141,8 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
 
-            {/* Admin token banner */}
-            {currentToken && !legacyMode && (
+            {/* Admin token banner — hidden on editor panel */}
+            {currentToken && !legacyMode && activePanel !== "editor" && (
               <Card className="border-primary/20 bg-primary/5">
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-start gap-4">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, Search } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, Search, ChevronUp, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +44,55 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
     const [isUploading, setIsUploading] = useState(false);
     const [uploadResult, setUploadResult] = useState<api.UploadResponse | null>(null);
     const [uploadError, setUploadError] = useState("");
+
+    // In-editor search
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchMatchIndex, setSearchMatchIndex] = useState(0);
+    const [searchMatchCount, setSearchMatchCount] = useState(0);
+    const [showSearch, setShowSearch] = useState(false);
+
+    function getMatchOffsets(text: string, query: string): number[] {
+        if (!query) return [];
+        const offsets: number[] = [];
+        const lower = text.toLowerCase();
+        const q = query.toLowerCase();
+        let idx = 0;
+        while ((idx = lower.indexOf(q, idx)) !== -1) {
+            offsets.push(idx);
+            idx += q.length;
+        }
+        return offsets;
+    }
+
+    function highlightMatch(index: number, offsets: number[]) {
+        const ta = textareaRef.current;
+        if (!ta || offsets.length === 0) return;
+        const start = offsets[index];
+        const end = start + searchQuery.length;
+        ta.focus();
+        ta.setSelectionRange(start, end);
+        // Scroll to selection
+        const linesBefore = content.substring(0, start).split("\n").length - 1;
+        const lineHeight = 20; // approx px per line at text-sm
+        ta.scrollTop = Math.max(0, linesBefore * lineHeight - ta.clientHeight / 2);
+    }
+
+    function handleSearch(query: string) {
+        setSearchQuery(query);
+        setSearchMatchIndex(0);
+        const offsets = getMatchOffsets(content, query);
+        setSearchMatchCount(offsets.length);
+        if (offsets.length > 0) highlightMatch(0, offsets);
+    }
+
+    function navigateSearch(dir: 1 | -1) {
+        const offsets = getMatchOffsets(content, searchQuery);
+        if (offsets.length === 0) return;
+        const next = (searchMatchIndex + dir + offsets.length) % offsets.length;
+        setSearchMatchIndex(next);
+        highlightMatch(next, offsets);
+    }
 
     const loadDomains = useCallback(async () => {
         setIsLoadingDomains(true);
@@ -307,15 +356,55 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                 />
             </div>
 
-            {/* Plain textarea editor */}
-            <textarea
-                className="w-full h-[480px] resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="# Title&#10;> Description&#10;&#10;## section: Introduction&#10;Write your content here..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                disabled={isUploading}
-                spellCheck={false}
-            />
+            {/* Textarea with inline search bar */}
+            <div className="rounded-lg border border-input overflow-hidden">
+                {/* Search bar — shown with ⌘F or button */}
+                {showSearch && (
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/60 bg-muted/30">
+                        <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <Input
+                            autoFocus
+                            placeholder="Search in content..."
+                            className="h-6 text-xs border-0 bg-transparent focus-visible:ring-0 px-1 flex-1"
+                            value={searchQuery}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") { e.preventDefault(); navigateSearch(e.shiftKey ? -1 : 1); }
+                                if (e.key === "Escape") { setShowSearch(false); setSearchQuery(""); setSearchMatchCount(0); }
+                            }}
+                        />
+                        {searchQuery && (
+                            <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                                {searchMatchCount === 0 ? "no matches" : `${searchMatchIndex + 1}/${searchMatchCount}`}
+                            </span>
+                        )}
+                        <button onClick={() => navigateSearch(-1)} disabled={searchMatchCount === 0} className="p-0.5 rounded hover:bg-muted/60 disabled:opacity-30">
+                            <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => navigateSearch(1)} disabled={searchMatchCount === 0} className="p-0.5 rounded hover:bg-muted/60 disabled:opacity-30">
+                            <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => { setShowSearch(false); setSearchQuery(""); setSearchMatchCount(0); }} className="p-0.5 rounded hover:bg-muted/60">
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+                <textarea
+                    ref={textareaRef}
+                    className="w-full h-[480px] resize-none bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="# Title&#10;> Description&#10;&#10;## section: Introduction&#10;Write your content here..."
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    disabled={isUploading}
+                    spellCheck={false}
+                    onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+                            e.preventDefault();
+                            setShowSearch(true);
+                        }
+                    }}
+                />
+            </div>
 
             <div className="flex items-center gap-3">
                 <Button
