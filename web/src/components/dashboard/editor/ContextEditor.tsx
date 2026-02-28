@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo } from 'react';
 
-import { AIChatPlugin } from '@platejs/ai/react';
 import { CopilotPlugin } from '@platejs/ai/react';
 import { deserializeMd, serializeMd } from '@platejs/markdown';
 import { createSlateEditor } from 'platejs';
@@ -58,8 +57,11 @@ export function ContextEditor({ value, onChange, disabled, apiKey = '', model = 
       body: { ...chatOptions.body, apiKey, model },
     });
     try {
+      const completeOptions = editor.getOptions(CopilotPlugin).completeOptions ?? {};
       editor.setOption(CopilotPlugin, 'completeOptions', {
-        body: { apiKey, model },
+        ...completeOptions,
+        api: completeOptions.api || '/api/ai/copilot',
+        body: { ...(completeOptions.body ?? {}), apiKey, model },
       });
     } catch {
       // CopilotPlugin may not be in all kit variants — ignore

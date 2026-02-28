@@ -375,6 +375,12 @@ def _resolve_ai_params(
     return (ai_key or "", ai_model or "")
 
 
+def _normalize_domain(domain: str) -> str:
+    """Normalize user-provided domain-like strings to registry/index format."""
+    domain = re.sub(r"^https?://", "", domain.strip(), flags=re.IGNORECASE)
+    return domain.rstrip("/")
+
+
 async def ensure_domain_indexed(domain: str, ai_key: str = "", ai_model: str = "") -> str:
     """
     If a domain is not in the index (or stale), fetch its content
@@ -451,6 +457,11 @@ async def search_endpoint(
 
     key, model = _resolve_ai_params(ai_key, ai_model)
 
+    if domain is not None:
+        domain = _normalize_domain(domain)
+        if not domain:
+            domain = None
+
     if domain:
         freshness = await ensure_domain_indexed(domain, ai_key=key, ai_model=model)
 
@@ -498,6 +509,9 @@ async def site_endpoint(
 ):
     """Get all sections for a specific domain. Pass AI credentials via x-ai-key / x-ai-model headers."""
     start = time.time()
+    domain = _normalize_domain(domain)
+    if not domain:
+        raise HTTPException(status_code=400, detail="Domain is required")
 
     key, model = _resolve_ai_params(ai_key, ai_model)
     freshness = await ensure_domain_indexed(domain, ai_key=key, ai_model=model)
@@ -537,11 +551,18 @@ async def batch_endpoint(
 
     results = []
     for bq in request.queries:
-        if bq.domain:
-            await ensure_domain_indexed(bq.domain, ai_key=key, ai_model=model)
+        normalized_domain = _normalize_domain(bq.domain) if bq.domain else None
+        if normalized_domain:
+            await ensure_domain_indexed(normalized_domain, ai_key=key, ai_model=model)
 
         try:
-            result = engine_search(query=bq.q, domain=bq.domain, lang=bq.lang, content_type=bq.content_type, limit=bq.limit)
+            result = engine_search(
+                query=bq.q,
+                domain=normalized_domain,
+                lang=bq.lang,
+                content_type=bq.content_type,
+                limit=bq.limit,
+            )
             hits = [format_hit(hit) for hit in result.get("hits", [])]
             results.append({
                 "query": bq.q,

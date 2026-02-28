@@ -10,10 +10,31 @@ import * as api from "@/lib/api";
 
 export const PROVIDERS = [
     { value: "none", label: "No AI (context.txt only)" },
-    { value: "gemini", label: "Gemini", defaultModel: "gemini/gemini-3-flash-preview" },
+    { value: "gemini", label: "Gemini", defaultModel: "gemini/gemini-2.5-flash" },
     { value: "openai", label: "OpenAI", defaultModel: "openai/gpt-4o-mini" },
-    { value: "openrouter", label: "OpenRouter", defaultModel: "openrouter/google/gemini-3-flash-preview" },
+    { value: "openrouter", label: "OpenRouter", defaultModel: "openrouter/google/gemini-2.5-flash" },
 ];
+
+function normalizeEditorModel(provider: string | undefined, model: string | undefined): string {
+    const raw = (model || "").trim();
+    if (!raw) return "";
+
+    const providerLower = (provider || "").toLowerCase();
+    const rawLower = raw.toLowerCase();
+    const isGoogleProvider = providerLower === "gemini" || providerLower === "google";
+    if (!isGoogleProvider) return raw;
+
+    if (
+        rawLower === "gemini-3-flash-preview" ||
+        rawLower.startsWith("gemini-3-") ||
+        rawLower.startsWith("gemini/gemini-3-") ||
+        rawLower.startsWith("google/gemini-3-")
+    ) {
+        return "gemini/gemini-2.5-flash";
+    }
+
+    return raw;
+}
 
 interface AiSettingsSectionProps {
     provider: string;
@@ -140,7 +161,9 @@ export function useAiSettings() {
             .then((s) => {
                 if (s.ai_provider) setProvider(s.ai_provider);
                 if (s.ai_key) setAiKey(s.ai_key);
-                if (s.ai_model) setAiModel(s.ai_model);
+                if (s.ai_model) {
+                    setAiModel(normalizeEditorModel(s.ai_provider, s.ai_model));
+                }
                 setSettingsLoaded(true);
             })
             .catch(() => setSettingsLoaded(true));

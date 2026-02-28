@@ -9,9 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.33",
-    "@ai-sdk/openai": "^3.0.36",
-    "@ai-sdk/react": "^2.0.28",
+    "@ai-sdk/google": "^3.0.34",
+    "@ai-sdk/openai": "^3.0.37",
+    "@ai-sdk/react": "^3.0.107",
     "@ariakit/react": "^0.4.21",
     "@emoji-mart/data": "^1.2.1",
     "@faker-js/faker": "^10.3.0",
@@ -52,7 +52,7 @@
     "@radix-ui/react-toolbar": "^1.1.11",
     "@udecode/cn": "^52.0.11",
     "@uploadthing/react": "^7.3.3",
-    "ai": "^5.0.28",
+    "ai": "^6.0.105",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

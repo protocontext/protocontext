@@ -35,12 +35,20 @@ import {
 
 /** Resolve an AI LanguageModel from a model string like "openai/gpt-4o-mini" */
 function resolveModel(modelString: string, apiKey: string): LanguageModel {
-  const [provider, ...rest] = modelString.split('/');
+  const modelInput = (modelString || '').trim();
+
+  // Allow bare Gemini model names like "gemini-2.5-flash" (no provider prefix)
+  if (!modelInput.includes('/')) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return createGoogleGenerativeAI({ apiKey })(modelInput || 'gemini-2.5-flash') as any;
+  }
+
+  const [provider, ...rest] = modelInput.split('/');
   const modelId = rest.join('/');
 
   if (provider === 'gemini' || provider === 'google') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return createGoogleGenerativeAI({ apiKey })(modelId || 'gemini-2.0-flash') as any;
+    return createGoogleGenerativeAI({ apiKey })(modelId || 'gemini-2.5-flash') as any;
   }
 
   if (provider === 'openrouter') {
@@ -48,7 +56,7 @@ function resolveModel(modelString: string, apiKey: string): LanguageModel {
       apiKey,
       baseURL: 'https://openrouter.ai/api/v1',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })(modelId || 'openai/gpt-4o-mini') as any;
+    })(modelId || 'google/gemini-2.5-flash') as any;
   }
 
   // Default: OpenAI-compatible
@@ -76,10 +84,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const modelString = model || 'openai/gpt-4o-mini';
-  const smartModel = model?.includes('gemini')
-    ? model
-    : model || 'google/gemini-2.0-flash';
+  const modelString = model || 'gemini/gemini-2.5-flash';
+  const smartModel = model || 'gemini/gemini-2.5-flash';
 
   const isSelecting = editor.api.isExpanded();
 
@@ -195,9 +201,13 @@ export async function POST(req: NextRequest) {
     });
 
     return createUIMessageStreamResponse({ stream });
-  } catch {
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Failed to process AI request';
     return NextResponse.json(
-      { error: 'Failed to process AI request' },
+      { error: message },
       { status: 500 }
     );
   }

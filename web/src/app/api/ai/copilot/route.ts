@@ -6,19 +6,26 @@ import { type LanguageModel, generateText } from 'ai';
 import { NextResponse } from 'next/server';
 
 function resolveModel(modelString: string, apiKey: string): LanguageModel {
-  const [provider, ...rest] = modelString.split('/');
+  const modelInput = (modelString || '').trim();
+
+  if (!modelInput.includes('/')) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return createGoogleGenerativeAI({ apiKey })(modelInput || 'gemini-2.5-flash') as any;
+  }
+
+  const [provider, ...rest] = modelInput.split('/');
   const modelId = rest.join('/');
 
   if (provider === 'gemini' || provider === 'google') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return createGoogleGenerativeAI({ apiKey })(modelId || 'gemini-2.0-flash') as any;
+    return createGoogleGenerativeAI({ apiKey })(modelId || 'gemini-2.5-flash') as any;
   }
   if (provider === 'openrouter') {
     return createOpenAI({
       apiKey,
       baseURL: 'https://openrouter.ai/api/v1',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    })(modelId || 'openai/gpt-4o-mini') as any;
+    })(modelId || 'google/gemini-2.5-flash') as any;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return createOpenAI({ apiKey })(modelId || 'gpt-4o-mini') as any;
@@ -27,7 +34,7 @@ function resolveModel(modelString: string, apiKey: string): LanguageModel {
 export async function POST(req: NextRequest) {
   const {
     apiKey: key,
-    model = 'openai/gpt-4o-mini',
+    model = 'gemini/gemini-2.5-flash',
     prompt,
     system,
   } = await req.json();
@@ -57,9 +64,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(null, { status: 408 });
     }
 
-    return NextResponse.json(
-      { error: 'Failed to process AI request' },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Failed to process AI request';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

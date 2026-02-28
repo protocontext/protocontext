@@ -13,6 +13,7 @@ import { BlockSelectionPlugin, useIsSelecting } from '@platejs/selection/react';
 import { getTransientSuggestionKey } from '@platejs/suggestion';
 import { Command as CommandPrimitive } from 'cmdk';
 import {
+  AlertCircle,
   Album,
   BadgeHelp,
   BookOpenCheck,
@@ -78,6 +79,10 @@ export function AIMenu() {
   const chat = usePluginOption(AIChatPlugin, 'chat');
 
   const { messages, status } = chat;
+  const abortFakeStream = () => {
+    const maybeChat = chat as unknown as { _abortFakeStream?: () => void };
+    maybeChat._abortFakeStream?.();
+  };
   const [anchorElement, setAnchorElement] = React.useState<HTMLElement | null>(
     null
   );
@@ -139,8 +144,7 @@ export function AIMenu() {
   useHotkeys('esc', () => {
     api.aiChat.stop();
 
-    // remove when you implement the route /api/ai/command
-    (chat as any)._abortFakeStream();
+    abortFakeStream();
   });
 
   const isLoading = status === 'streaming' || status === 'submitted';
@@ -628,8 +632,13 @@ export function AILoadingBar() {
   const mode = usePluginOption(AIChatPlugin, 'mode');
 
   const { status } = chat;
+  const errorMessage = chat.error?.message;
 
   const { api } = useEditorPlugin(AIChatPlugin);
+  const abortFakeStream = () => {
+    const maybeChat = chat as unknown as { _abortFakeStream?: () => void };
+    maybeChat._abortFakeStream?.();
+  };
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -653,8 +662,7 @@ export function AILoadingBar() {
   useHotkeys('esc', () => {
     api.aiChat.stop();
 
-    // remove when you implement the route /api/ai/command
-    (chat as any)._abortFakeStream();
+    abortFakeStream();
   });
 
   if (
@@ -715,6 +723,19 @@ export function AILoadingBar() {
             </Button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div
+        className={cn(
+          '-translate-x-1/2 absolute bottom-4 left-1/2 z-20 flex max-w-[90%] items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive text-xs shadow-md'
+        )}
+      >
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        <span className="font-mono break-all">{errorMessage}</span>
       </div>
     );
   }

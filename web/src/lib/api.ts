@@ -378,7 +378,11 @@ export async function getContent(domain: string): Promise<ContentResponse> {
 
 export async function listDomains(): Promise<string[]> {
   const res = await fetch(`${API_BASE}/list`, { headers: baseHeaders() });
-  if (!res.ok) return [];
+  if (res.status === 404) return [];
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Failed to list domains");
+  }
   const data = await res.json();
   return data.domains ?? [];
 }

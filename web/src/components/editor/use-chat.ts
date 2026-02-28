@@ -48,13 +48,13 @@ export type MessageDataPart = {
 
 export type Chat = UseChatHelpers<ChatMessage>;
 
-export type ChatMessage = UIMessage<{}, MessageDataPart>;
+export type ChatMessage = UIMessage<Record<string, never>, MessageDataPart>;
 
 export const useChat = () => {
   const editor = useEditorRef();
   const options = usePluginOption(aiChatPlugin, 'chatOptions');
 
-  // remove when you implement the route /api/ai/command
+  // Optional mock stream fallback for local demos only.
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const _abortFakeStream = () => {
     if (abortControllerRef.current) {
@@ -67,7 +67,6 @@ export const useChat = () => {
     id: 'editor',
     transport: new DefaultChatTransport({
       api: options.api || '/api/ai/command',
-      // Mock the API response. Remove it when you implement the route /api/ai/command
       fetch: (async (input, init) => {
         const bodyOptions = editor.getOptions(aiChatPlugin).chatOptions?.body;
 
@@ -84,13 +83,33 @@ export const useChat = () => {
         });
 
         if (!res.ok) {
+          const mockEnabled = process.env.NEXT_PUBLIC_EDITOR_MOCK_AI === '1';
+          if (!mockEnabled) {
+            let message = `AI request failed (${res.status})`;
+            try {
+              const data = await res.clone().json();
+              if (typeof data?.error === 'string' && data.error) {
+                message = data.error;
+              } else if (typeof data?.detail === 'string' && data.detail) {
+                message = data.detail;
+              }
+            } catch {
+              const text = await res.text().catch(() => '');
+              if (text) message = text;
+            }
+            throw new Error(message);
+          }
+
           let sample: 'comment' | 'markdown' | 'mdx' | 'table' | null = null;
 
           try {
             const body = JSON.parse(init?.body as string);
-            const content = body.messages
+            const textPart = body.messages
               .at(-1)
-              .parts.find((p: any) => p.type === 'text')?.text;
+              ?.parts?.find((p: { type?: string }) => p.type === 'text') as
+              | { text?: string }
+              | undefined;
+            const content = textPart?.text || '';
 
             if (content.includes('Generate a markdown sample')) {
               sample = 'markdown';
@@ -258,6 +277,7 @@ export const useChat = () => {
   };
 
   React.useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     editor.setOption(AIChatPlugin, 'chat', chat as any);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat.status, chat.messages, chat.error]);

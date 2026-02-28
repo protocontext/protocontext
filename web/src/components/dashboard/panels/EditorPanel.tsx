@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, Search, ChevronUp, ChevronDown, X } from "lucide-react";
+import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, Search, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,26 @@ interface EditorPanelProps {
     initialName?: string;
     initialContent?: string;
 }
+
+const DEFAULT_TEMPLATE = `# My Site Title
+> A brief description of what this content is about.
+
+@lang: en
+@version: 1.0
+
+## section: Introduction
+Write your introduction here. Explain what this site or document is about.
+
+## section: Details
+Add more detailed information here. You can use bullet lists:
+
+- First important point
+- Second important point
+- Third important point
+
+## section: Contact
+Add any contact or closing information here.
+`;
 
 function normalizeDomainLike(input: string): string {
     return input.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
@@ -36,7 +56,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
 
     // Editor state
     const [name, setName] = useState(initialName);
-    const [content, setContent] = useState(initialContent);
+    const [content, setContent] = useState(initialContent || DEFAULT_TEMPLATE);
     const [isLoading, setIsLoading] = useState(false);
     const [loadError, setLoadError] = useState("");
 
@@ -47,10 +67,10 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
 
     // In-editor search
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchMatchIndex, setSearchMatchIndex] = useState(0);
     const [searchMatchCount, setSearchMatchCount] = useState(0);
-    const [showSearch, setShowSearch] = useState(false);
 
     function getMatchOffsets(text: string, query: string): number[] {
         if (!query) return [];
@@ -65,16 +85,13 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
         return offsets;
     }
 
-    function highlightMatch(index: number, offsets: number[]) {
+    // Only scroll the textarea to the match — never steal focus from the search input.
+    function scrollToMatch(index: number, offsets: number[]) {
         const ta = textareaRef.current;
         if (!ta || offsets.length === 0) return;
         const start = offsets[index];
-        const end = start + searchQuery.length;
-        ta.focus();
-        ta.setSelectionRange(start, end);
-        // Scroll to selection
         const linesBefore = content.substring(0, start).split("\n").length - 1;
-        const lineHeight = 20; // approx px per line at text-sm
+        const lineHeight = 20;
         ta.scrollTop = Math.max(0, linesBefore * lineHeight - ta.clientHeight / 2);
     }
 
@@ -83,7 +100,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
         setSearchMatchIndex(0);
         const offsets = getMatchOffsets(content, query);
         setSearchMatchCount(offsets.length);
-        if (offsets.length > 0) highlightMatch(0, offsets);
+        if (offsets.length > 0) scrollToMatch(0, offsets);
     }
 
     function navigateSearch(dir: 1 | -1) {
@@ -91,7 +108,9 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
         if (offsets.length === 0) return;
         const next = (searchMatchIndex + dir + offsets.length) % offsets.length;
         setSearchMatchIndex(next);
-        highlightMatch(next, offsets);
+        scrollToMatch(next, offsets);
+        // Keep focus on the search input after clicking prev/next
+        searchInputRef.current?.focus();
     }
 
     const loadDomains = useCallback(async () => {
@@ -356,39 +375,33 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                 />
             </div>
 
-            {/* Textarea with inline search bar */}
+            {/* Textarea with inline search bar — always visible */}
             <div className="rounded-lg border border-input overflow-hidden">
-                {/* Search bar — shown with ⌘F or button */}
-                {showSearch && (
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/60 bg-muted/30">
-                        <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <Input
-                            autoFocus
-                            placeholder="Search in content..."
-                            className="h-6 text-xs border-0 bg-transparent focus-visible:ring-0 px-1 flex-1"
-                            value={searchQuery}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") { e.preventDefault(); navigateSearch(e.shiftKey ? -1 : 1); }
-                                if (e.key === "Escape") { setShowSearch(false); setSearchQuery(""); setSearchMatchCount(0); }
-                            }}
-                        />
-                        {searchQuery && (
-                            <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
-                                {searchMatchCount === 0 ? "no matches" : `${searchMatchIndex + 1}/${searchMatchCount}`}
-                            </span>
-                        )}
-                        <button onClick={() => navigateSearch(-1)} disabled={searchMatchCount === 0} className="p-0.5 rounded hover:bg-muted/60 disabled:opacity-30">
-                            <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => navigateSearch(1)} disabled={searchMatchCount === 0} className="p-0.5 rounded hover:bg-muted/60 disabled:opacity-30">
-                            <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => { setShowSearch(false); setSearchQuery(""); setSearchMatchCount(0); }} className="p-0.5 rounded hover:bg-muted/60">
-                            <X className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                )}
+                <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/60 bg-muted/30">
+                    <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <Input
+                        ref={searchInputRef}
+                        placeholder="Search in content..."
+                        className="h-6 text-xs border-0 bg-transparent focus-visible:ring-0 px-1 flex-1"
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); navigateSearch(e.shiftKey ? -1 : 1); }
+                            if (e.key === "Escape") { setSearchQuery(""); setSearchMatchCount(0); }
+                        }}
+                    />
+                    <span className="text-[10px] text-muted-foreground shrink-0 font-mono w-16 text-right">
+                        {searchQuery
+                            ? (searchMatchCount === 0 ? "no matches" : `${searchMatchIndex + 1}/${searchMatchCount}`)
+                            : ""}
+                    </span>
+                    <button onClick={() => navigateSearch(-1)} disabled={searchMatchCount === 0} className="p-0.5 rounded hover:bg-muted/60 disabled:opacity-30">
+                        <ChevronUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => navigateSearch(1)} disabled={searchMatchCount === 0} className="p-0.5 rounded hover:bg-muted/60 disabled:opacity-30">
+                        <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                </div>
                 <textarea
                     ref={textareaRef}
                     className="w-full h-[480px] resize-none bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
@@ -400,7 +413,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                     onKeyDown={(e) => {
                         if ((e.metaKey || e.ctrlKey) && e.key === "f") {
                             e.preventDefault();
-                            setShowSearch(true);
+                            searchInputRef.current?.focus();
                         }
                     }}
                 />
