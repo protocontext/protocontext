@@ -21,15 +21,18 @@ interface ContextEditorProps {
   onChange: (val: string) => void;
   /** Disables editing (e.g. while uploading) */
   disabled?: boolean;
+  /** AI API key — passed directly so we don't rely on localStorage */
+  apiKey?: string;
+  /** AI model string e.g. "gemini/gemini-2.0-flash" */
+  model?: string;
 }
 
 /**
  * Rich-text editor wrapper for context.txt content.
  * Displays the content using Plate.js with full AI support (⌘+J).
- * Reads the AI API key + model from localStorage (proto_ai_key / proto_ai_model)
- * that are configured in SubmitPanel's Settings section.
+ * Receives apiKey + model as props (from the EditorPanel AI settings).
  */
-export function ContextEditor({ value, onChange, disabled }: ContextEditorProps) {
+export function ContextEditor({ value, onChange, disabled, apiKey = '', model = 'openai/gpt-4o-mini' }: ContextEditorProps) {
   // Convert raw context.txt → Slate nodes on mount only.
   // "## section: X" is stripped to "## X" for display.
   const initialNodes = useMemo(() => {
@@ -46,50 +49,35 @@ export function ContextEditor({ value, onChange, disabled }: ContextEditorProps)
     value: initialNodes,
   });
 
-  // Inject the AI key + model from localStorage into the editor's chat plugin.
-  // This mirrors how settings-dialog.tsx injects the key, but reads from the
-  // same localStorage keys used by the rest of the SubmitPanel UI.
+  // Inject the AI key + model into the editor's chat plugin whenever they change.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const apiKey = localStorage.getItem('proto_ai_key') ?? '';
-    const model =
-      localStorage.getItem('proto_ai_model') ?? 'openai/gpt-4o-mini';
-
     if (!apiKey) return;
-
     const chatOptions = editor.getOptions(aiChatPlugin).chatOptions ?? {};
     editor.setOption(aiChatPlugin, 'chatOptions', {
       ...chatOptions,
-      body: {
-        ...chatOptions.body,
-        apiKey,
-        model,
-      },
+      body: { ...chatOptions.body, apiKey, model },
     });
-
-    // Also inject into Copilot (inline ghost-text suggestions)
     try {
       editor.setOption(CopilotPlugin, 'completeOptions', {
         body: { apiKey, model },
       });
     } catch {
-      // CopilotPlugin may not be registered in all kit variants — ignore
+      // CopilotPlugin may not be in all kit variants — ignore
     }
-  }, [editor]);
+  }, [editor, apiKey, model]);
 
   return (
-    <div className="rounded-lg border border-input overflow-hidden min-h-[12rem]">
+    <div className="rounded-lg border border-input overflow-hidden h-[480px] flex flex-col">
       <Plate
         editor={editor}
         readOnly={disabled}
         onChange={() => {
-          // Serialize the current editor children back to context.txt markdown.
           const md = serializeMd(editor);
           onChange(serializeToContextTxt(md));
         }}
       >
-        <EditorContainer>
-          <Editor readOnly={disabled} />
+        <EditorContainer className="flex-1 overflow-y-auto h-full">
+          <Editor readOnly={disabled} className="min-h-full pb-16" />
         </EditorContainer>
       </Plate>
     </div>

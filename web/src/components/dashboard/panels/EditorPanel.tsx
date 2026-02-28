@@ -174,6 +174,8 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                 value={content}
                 onChange={setContent}
                 disabled={isUploading}
+                apiKey={aiKey}
+                model={aiModel}
             />
 
             <div className="flex items-center gap-3">
