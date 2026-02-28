@@ -14,6 +14,7 @@
 const http   = require('http');
 const { spawn, execSync } = require('child_process');
 const path   = require('path');
+const fs     = require('fs');
 
 const UPDATER_PORT = 3999;
 const NEXT_PORT    = 3000;
@@ -49,12 +50,26 @@ function killPort(port) {
   catch { /* ignore */ }
 }
 
+// output: standalone doesn't copy static assets automatically — do it here.
+function copyStaticAssets() {
+  const src  = path.join(WEB_DIR, '.next', 'static');
+  const dest = path.join(WEB_DIR, '.next', 'standalone', '.next', 'static');
+  const pub  = path.join(WEB_DIR, 'public');
+  const pubDest = path.join(WEB_DIR, '.next', 'standalone', 'public');
+  try {
+    execSync(`cp -r "${src}" "${dest}"`, { shell: true });
+    if (fs.existsSync(pub)) execSync(`cp -r "${pub}" "${pubDest}"`, { shell: true });
+    addLog('Static assets copied to standalone output.');
+  } catch (e) {
+    addLog(`Warning: could not copy static assets — ${e.message}`);
+  }
+}
+
 // ── Next.js lifecycle ──────────────────────────────────────────────────────
 function startNext() {
   if (nextProc) { nextProc.kill(); nextProc = null; }
   killPort(NEXT_PORT);
 
-  const fs = require('fs');
   if (!fs.existsSync(NEXT_BIN)) {
     addLog(`Next.js build not found at ${NEXT_BIN} — run an update first.`);
     return;
@@ -96,7 +111,9 @@ function runUpdate() {
     build.on('close', code => {
       if (code !== 0) { addLog(`Build failed (exit ${code})`); state.status = 'error'; return; }
 
-      addLog('Build OK — restarting Next.js...');
+      addLog('Build OK — copying static assets...');
+      copyStaticAssets();
+      addLog('Restarting Next.js...');
       state.status = 'restarting';
       startNext();
 
@@ -143,6 +160,7 @@ const server = http.createServer((req, res) => {
 // ── Boot ───────────────────────────────────────────────────────────────────
 state.commit = getCommit();
 addLog(`ProtoContext Updater v1 — commit ${state.commit}`);
+copyStaticAssets();
 startNext();
 
 server.listen(UPDATER_PORT, () => {
