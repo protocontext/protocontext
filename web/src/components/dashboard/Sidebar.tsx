@@ -3,8 +3,9 @@
 import {
     Search, Globe, Scan, FileEdit, Trash2, Key, Code2, BarChart3, BarChart2,
     Terminal, BookOpen, Github, LogOut, ChevronRight, Sun, Moon,
+    RefreshCw, Loader2, X,
 } from "lucide-react";
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,6 +30,141 @@ const NAV_ITEMS: NavItem[] = [
     { id: "analytics", label: "Analytics", icon: <BarChart2 className="w-4 h-4" /> },
 ];
 
+// ── UpdateButton ────────────────────────────────────────────────────────────
+type UpdateStatus = 'idle' | 'pulling' | 'building' | 'restarting' | 'error' | 'offline';
+
+function UpdateButton() {
+    const [status, setStatus]     = useState<UpdateStatus>('offline');
+    const [commit, setCommit]     = useState('');
+    const [log, setLog]           = useState<string[]>([]);
+    const [showLog, setShowLog]   = useState(false);
+    const pollingRef              = useRef<ReturnType<typeof setInterval> | null>(null);
+    const logEndRef               = useRef<HTMLDivElement>(null);
+
+    async function fetchStatus(): Promise<UpdateStatus> {
+        try {
+            const res  = await fetch('http://localhost:3999/status', { signal: AbortSignal.timeout(2000) });
+            const data = await res.json();
+            setStatus(data.status);
+            setCommit(data.commit ?? '');
+            setLog(data.log ?? []);
+            return data.status;
+        } catch {
+            setStatus('offline');
+            return 'offline';
+        }
+    }
+
+    useEffect(() => {
+        fetchStatus();
+        // Lightweight heartbeat — only poll actively while updating
+    }, []);
+
+    // Auto-scroll log to bottom
+    useEffect(() => {
+        logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [log]);
+
+    function startPolling() {
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        pollingRef.current = setInterval(async () => {
+            const s = await fetchStatus();
+            if (s === 'idle') {
+                clearInterval(pollingRef.current!);
+                pollingRef.current = null;
+                // Server just restarted — wait a moment then reload
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        }, 1200);
+    }
+
+    async function handleUpdate() {
+        setShowLog(true);
+        try {
+            await fetch('http://localhost:3999/update', { method: 'POST' });
+            startPolling();
+        } catch {
+            setStatus('error');
+        }
+    }
+
+    const isUpdating = status === 'pulling' || status === 'building' || status === 'restarting';
+
+    const statusLabel: Record<UpdateStatus, string> = {
+        idle       : 'Pull update',
+        pulling    : 'Pulling…',
+        building   : 'Building…',
+        restarting : 'Restarting…',
+        error      : 'Error — retry',
+        offline    : 'Updater offline',
+    };
+
+    const statusColor: Partial<Record<UpdateStatus, string>> = {
+        error   : 'text-destructive hover:text-destructive',
+        offline : 'opacity-40 cursor-not-allowed',
+    };
+
+    if (status === 'offline') return null; // Hide button entirely when updater isn't running
+
+    return (
+        <>
+            <button
+                onClick={handleUpdate}
+                disabled={isUpdating}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all disabled:opacity-60 ${statusColor[status] ?? ''}`}
+            >
+                {isUpdating
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    : <RefreshCw className="w-3.5 h-3.5 shrink-0" />}
+                <span className="flex-1 text-left">{statusLabel[status]}</span>
+                {commit && !isUpdating && (
+                    <span className="font-mono text-[10px] opacity-40">{commit}</span>
+                )}
+            </button>
+
+            {/* Progress overlay */}
+            {showLog && (
+                <div className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm flex items-end justify-start p-4 lg:items-center lg:justify-center">
+                    <div className="w-full max-w-md bg-background border border-border rounded-xl shadow-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 bg-muted/20">
+                            <div className="flex items-center gap-2">
+                                {isUpdating
+                                    ? <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                    : status === 'error'
+                                        ? <span className="text-destructive text-sm">✗</span>
+                                        : <span className="text-primary text-sm">✓</span>}
+                                <span className="text-sm font-medium">
+                                    {isUpdating ? statusLabel[status] : status === 'error' ? 'Update failed' : 'Reloading…'}
+                                </span>
+                            </div>
+                            {!isUpdating && (
+                                <button
+                                    onClick={() => setShowLog(false)}
+                                    className="p-1 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                        {/* Log */}
+                        <div className="p-3 max-h-64 overflow-y-auto bg-black/30 font-mono text-[11px] space-y-0.5">
+                            {log.map((line, i) => (
+                                <div key={i} className="text-muted-foreground leading-relaxed">{line}</div>
+                            ))}
+                            {!isUpdating && status !== 'error' && (
+                                <div className="text-primary mt-1">✓ Done — reloading page…</div>
+                            )}
+                            <div ref={logEndRef} />
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
+// ── Sidebar ─────────────────────────────────────────────────────────────────
 interface SidebarProps {
     activePanel: PanelId;
     onSelect: (id: PanelId) => void;
@@ -108,6 +244,7 @@ export function Sidebar({ activePanel, onSelect, legacyMode, onLogout }: Sidebar
                         Spec v1.0
                     </button>
                 </a>
+                <UpdateButton />
                 {!legacyMode && (
                     <button
                         onClick={onLogout}
