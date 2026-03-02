@@ -16,6 +16,7 @@ import { KeysPanel } from "@/components/dashboard/panels/KeysPanel";
 import { ApiReferencePanel } from "@/components/dashboard/panels/ApiReferencePanel";
 import { StatsPanel } from "@/components/dashboard/panels/StatsPanel";
 import { AnalyticsPanel } from "@/components/dashboard/panels/AnalyticsPanel";
+import { MemoriesPanel } from "@/components/dashboard/panels/MemoriesPanel";
 import * as api from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -189,6 +190,7 @@ export default function Dashboard() {
             {activePanel === "api" && <ApiReferencePanel />}
             {activePanel === "stats" && <StatsPanel />}
             {activePanel === "analytics" && <AnalyticsPanel />}
+            {activePanel === "memories" && <MemoriesPanel />}
           </div>
         </div>
       </main>

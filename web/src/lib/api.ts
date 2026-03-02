@@ -474,3 +474,95 @@ export async function getHealth(): Promise<HealthResponse> {
   if (!res.ok) throw new Error("Health check failed");
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Memories (per-caller voice agent memory)
+// ---------------------------------------------------------------------------
+
+export interface MemoryHistoryEntry {
+  content: string;
+  created_at: string;
+}
+
+export interface MemoryRecord {
+  caller_id: string;
+  profile: string;
+  profile_updated_at: string;
+  history: MemoryHistoryEntry[];
+  formatted: string;
+}
+
+export interface CallerSummary {
+  caller_id: string;
+  profile_snippet: string;
+  profile_updated_at: string;
+  call_count: number;
+}
+
+export async function listCallers(): Promise<CallerSummary[]> {
+  const res = await fetch(`${API_BASE}/memories`, { headers: baseHeaders() });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Failed to list callers");
+  }
+  const data = await res.json();
+  return data.callers ?? [];
+}
+
+export async function getMemories(callerId: string): Promise<MemoryRecord> {
+  const res = await fetch(
+    `${API_BASE}/memories/${encodeURIComponent(callerId)}`,
+    { headers: baseHeaders() },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "No memories found");
+  }
+  return res.json();
+}
+
+export async function appendMemory(opts: {
+  caller_id: string;
+  memories: string;
+}): Promise<{ status: string; caller_id: string }> {
+  const res = await fetch(`${API_BASE}/memories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...baseHeaders() },
+    body: JSON.stringify(opts),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Failed to append memory");
+  }
+  return res.json();
+}
+
+export async function updateProfile(
+  callerId: string,
+  profile: string,
+): Promise<{ status: string; caller_id: string }> {
+  const res = await fetch(
+    `${API_BASE}/memories/${encodeURIComponent(callerId)}/profile`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...baseHeaders() },
+      body: JSON.stringify({ profile }),
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Failed to update profile");
+  }
+  return res.json();
+}
+
+export async function deleteMemories(callerId: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/memories/${encodeURIComponent(callerId)}`,
+    { method: "DELETE", headers: baseHeaders() },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Failed to delete memories");
+  }
+}

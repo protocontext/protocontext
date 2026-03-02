@@ -3,13 +3,13 @@
 import {
     Search, Globe, Scan, FileEdit, Trash2, Key, Code2, BarChart3, BarChart2,
     Terminal, BookOpen, Github, LogOut, ChevronRight, Sun, Moon,
-    RefreshCw, Loader2, X,
+    RefreshCw, Loader2, X, Brain,
 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 
-export type PanelId = "search" | "site" | "scraper" | "editor" | "delete" | "keys" | "api" | "stats" | "analytics";
+export type PanelId = "search" | "site" | "scraper" | "editor" | "delete" | "keys" | "api" | "stats" | "analytics" | "memories";
 
 interface NavItem {
     id: PanelId;
@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
     { id: "scraper", label: "Scraper", icon: <Scan className="w-4 h-4" /> },
     { id: "editor", label: "Editor", icon: <FileEdit className="w-4 h-4" /> },
     { id: "delete", label: "Delete", icon: <Trash2 className="w-4 h-4" /> },
+    { id: "memories", label: "Memories", icon: <Brain className="w-4 h-4" /> },
     { id: "keys", label: "API Keys", icon: <Key className="w-4 h-4" />, adminOnly: true },
     { id: "api", label: "API Reference", icon: <Code2 className="w-4 h-4" /> },
     { id: "stats", label: "Stats", icon: <BarChart3 className="w-4 h-4" /> },

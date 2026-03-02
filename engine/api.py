@@ -18,6 +18,13 @@ Endpoints:
     POST /auth/login     — login with email + password
     POST /auth/logout    — invalidate current session
 
+Memories (voice agent per-caller memory — independent of context.txt system):
+    GET    /memories                — list all callers with summary stats
+    POST   /memories                — append a call summary for a caller_id
+    GET    /memories/{caller_id}    — get profile + history (?format=elevenlabs for 11labs)
+    PUT    /memories/{caller_id}/profile — update caller profile manually
+    DELETE /memories/{caller_id}    — delete all memories for a caller (admin-only)
+
 Supports multiple AI providers for content conversion:
     - Gemini (Google) — default
     - OpenAI (GPT models)
@@ -56,7 +63,9 @@ from crawler import fetch_context, load_registry, crawl_all, _try_fetch_path, _e
 from converter import fetch_and_convert, convert_scraped_to_context, _detect_language
 from scraper import scrape_site_content, fetch_sitemap_urls, scrape_page_content, _filter_best_language_urls, _is_content_url, _path_to_title, _crawl_internal_links, MAX_PAGES
 from indexer import get_client, setup_index, index_documents, delete_domain, search as engine_search, get_stats, COLLECTION_NAME
+from converter import _call_llm
 import auth
+import memories as memories_db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("protocontext.api")
@@ -178,6 +187,9 @@ async def lifespan(app: FastAPI):
 
     # Initialise API key database
     auth.init_db()
+
+    # Initialise memories database (separate from auth, independent module)
+    memories_db.init_db()
 
     # Load registry into memory and sync with Typesense
     file_domains = load_registry(REGISTRY_PATH)
@@ -346,6 +358,13 @@ class SubmitRequest(BaseModel):
 class UploadRequest(BaseModel):
     name: str
     content: str
+
+class AppendMemoryRequest(BaseModel):
+    caller_id: str
+    memories: str
+
+class UpdateProfileRequest(BaseModel):
+    profile: str
 
 class SearchResult(BaseModel):
     domain: str
@@ -1140,3 +1159,173 @@ async def auth_logout(request: Request):
     if token and auth.invalidate_session(token):
         return {"status": "logged_out"}
     raise HTTPException(status_code=400, detail="No active session to invalidate")
+
+
+# --- Memories ---
+
+_PROFILE_PROMPT = """You are maintaining a persistent caller profile for a hospitality voice agent.
+
+Existing profile:
+{existing_profile}
+
+New call summary:
+{new_memories}
+
+Task: Extract and update the persistent facts about this caller.
+Include any of: name, preferences, recurring requests, important notes.
+Merge with existing facts — update or remove info only if the new summary clearly contradicts it.
+Be concise. One fact per line. Plain text only, no markdown, no headers."""
+
+
+async def _update_caller_profile(caller_id: str, new_memories: str) -> None:
+    """
+    Background task: use the saved admin AI key to extract persistent facts
+    from the new call summary and merge them into the caller's profile.
+
+    Silently skips if no AI key is configured (memories are still stored in history).
+    """
+    settings = auth.get_settings()
+    ai_key = settings.get("ai_key", "")
+    ai_model = settings.get("ai_model", "")
+    if not ai_key:
+        return  # no AI key → history-only mode, no profile extraction
+
+    existing = memories_db.get(caller_id)
+    existing_profile = existing["profile"]
+
+    # Include recent history as additional context for the LLM
+    recent = memories_db.get_recent_history(caller_id, limit=5)
+    history_context = ""
+    if recent:
+        history_context = "\n\nRecent call summaries for context:\n" + "\n".join(
+            f"[{e['created_at'][:10]}] {e['content']}" for e in recent
+        )
+
+    prompt = _PROFILE_PROMPT.format(
+        existing_profile=existing_profile or "(empty — first contact with this caller)",
+        new_memories=new_memories,
+    ) + history_context
+
+    updated = await _call_llm(prompt, ai_key, ai_model)
+    if updated and updated.strip():
+        memories_db.update_profile(caller_id, updated.strip())
+        logger.info("[memories] Profile updated for %s", caller_id)
+
+
+@app.get("/memories")
+async def memories_list():
+    """
+    List all callers that have stored memories, ordered by most recently updated.
+
+    Returns a summary per caller: { caller_id, profile_snippet, profile_updated_at, call_count }
+    """
+    return {"callers": memories_db.list_callers()}
+
+
+@app.post("/memories")
+async def memories_append(body: AppendMemoryRequest):
+    """
+    Append a call summary for a caller_id.
+
+    Stores the entry in rolling history (last 10 kept per caller) and triggers
+    a background LLM task to extract/update the persistent caller profile.
+
+    Used by n8n after each call:
+        POST /memories
+        { "caller_id": "+393401234567", "memories": "Nome: Rossi\\nPreferenza: vista giardino" }
+
+    The LLM profile update uses the AI key saved in Settings. If no key is configured,
+    the summary is still stored in history — no crash, no profile extraction.
+    """
+    caller_id = body.caller_id.strip()
+    content = body.memories.strip()
+
+    if not caller_id:
+        raise HTTPException(status_code=400, detail="caller_id is required")
+    if not content:
+        raise HTTPException(status_code=400, detail="memories is required")
+
+    memories_db.append(caller_id, content)
+    asyncio.create_task(_update_caller_profile(caller_id, content))
+
+    return {"status": "appended", "caller_id": caller_id}
+
+
+@app.get("/memories/{caller_id}")
+async def memories_get(
+    caller_id: str,
+    format: Optional[str] = Query(None, description="Response format: 'elevenlabs' for conversation_initiation_client_data"),
+):
+    """
+    Get all memories for a caller_id.
+
+    Query params:
+        format=elevenlabs  → return ElevenLabs conversation_initiation_client_data array
+        (default)          → return full data with profile, history, and formatted string
+
+    Used by ElevenLabs at the start of each call to build the agent's context.
+    Returns 404 if no memories exist for this caller_id.
+    """
+    caller_id = caller_id.strip()
+    if not caller_id:
+        raise HTTPException(status_code=400, detail="caller_id is required")
+
+    data = memories_db.get(caller_id)
+    if not data["profile"] and not data["history"]:
+        raise HTTPException(status_code=404, detail=f"No memories found for {caller_id}")
+
+    # Build formatted string for direct prompt injection
+    lines: list[str] = []
+    if data["profile"]:
+        lines.append("--- Caller Profile ---")
+        lines.append(data["profile"])
+    if data["history"]:
+        lines.append("--- Recent Calls ---")
+        for entry in data["history"]:
+            date_part = entry["created_at"][:10]
+            lines.append(f"[{date_part}] {entry['content']}")
+    formatted = "\n".join(lines)
+
+    # ElevenLabs format: conversation_initiation_client_data array
+    if format == "elevenlabs":
+        return [
+            {
+                "type": "conversation_initiation_client_data",
+                "dynamic_variables": {
+                    "guest_memories": formatted,
+                },
+            }
+        ]
+
+    # Default: full data for dashboard / general use
+    return {**data, "formatted": formatted}
+
+
+@app.put("/memories/{caller_id}/profile")
+async def memories_update_profile(caller_id: str, body: UpdateProfileRequest):
+    """
+    Manually update the persistent profile for a caller_id.
+    Creates the profile if it doesn't exist yet.
+    """
+    caller_id = caller_id.strip()
+    if not caller_id:
+        raise HTTPException(status_code=400, detail="caller_id is required")
+
+    memories_db.update_profile(caller_id, body.profile.strip())
+    return {"status": "updated", "caller_id": caller_id}
+
+
+@app.delete("/memories/{caller_id}")
+async def memories_delete(caller_id: str, request: Request):
+    """
+    Delete all memories (profile + history) for a caller_id. Admin only.
+    """
+    _require_admin(request)
+    caller_id = caller_id.strip()
+    if not caller_id:
+        raise HTTPException(status_code=400, detail="caller_id is required")
+
+    if not memories_db.delete(caller_id):
+        raise HTTPException(status_code=404, detail=f"No memories found for {caller_id}")
+
+    return {"status": "deleted", "caller_id": caller_id}
