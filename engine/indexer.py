@@ -173,7 +173,9 @@ def search(
     params = {
         "q": query if query else "*",
         "query_by": "title,body,domain,topics",
-        "query_by_weights": "3,1,1,1",
+        "query_by_weights": "4,2,1,1",
+        "sort_by": "_text_match:desc,_vector_distance:asc",
+        "prioritize_exact_match": "true",
         "per_page": limit,
     }
 
