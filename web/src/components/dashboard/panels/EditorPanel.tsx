@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Upload, FileText, Loader2, AlertCircle, CheckCircle2, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { PlainTextEditor } from "@/components/dashboard/shared/PlainTextEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,7 +67,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
     const [uploadError, setUploadError] = useState("");
 
     // In-editor search
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const editorWrapperRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchMatchIndex, setSearchMatchIndex] = useState(0);
@@ -85,14 +86,13 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
         return offsets;
     }
 
-    // Only scroll the textarea to the match — never steal focus from the search input.
     function scrollToMatch(index: number, offsets: number[]) {
-        const ta = textareaRef.current;
-        if (!ta || offsets.length === 0) return;
+        const wrapper = editorWrapperRef.current;
+        if (!wrapper || offsets.length === 0) return;
         const start = offsets[index];
         const linesBefore = content.substring(0, start).split("\n").length - 1;
-        const lineHeight = 20;
-        ta.scrollTop = Math.max(0, linesBefore * lineHeight - ta.clientHeight / 2);
+        const lineHeight = 22;
+        wrapper.scrollTop = Math.max(0, linesBefore * lineHeight - wrapper.clientHeight / 2);
     }
 
     function handleSearch(query: string) {
@@ -109,7 +109,6 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
         const next = (searchMatchIndex + dir + offsets.length) % offsets.length;
         setSearchMatchIndex(next);
         scrollToMatch(next, offsets);
-        // Keep focus on the search input after clicking prev/next
         searchInputRef.current?.focus();
     }
 
@@ -375,7 +374,7 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                 />
             </div>
 
-            {/* Textarea with inline search bar — always visible */}
+            {/* Editor with inline search bar */}
             <div className="rounded-lg border border-input overflow-hidden">
                 <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border/60 bg-muted/30">
                     <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -402,21 +401,16 @@ export function EditorPanel({ initialName = "", initialContent = "" }: EditorPan
                         <ChevronDown className="w-3.5 h-3.5" />
                     </button>
                 </div>
-                <textarea
-                    ref={textareaRef}
-                    className="w-full h-[480px] resize-none bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="# Title&#10;> Description&#10;&#10;## section: Introduction&#10;Write your content here..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    disabled={isUploading}
-                    spellCheck={false}
-                    onKeyDown={(e) => {
-                        if ((e.metaKey || e.ctrlKey) && e.key === "f") {
-                            e.preventDefault();
-                            searchInputRef.current?.focus();
-                        }
-                    }}
-                />
+                <div ref={editorWrapperRef}>
+                    <PlainTextEditor
+                        value={content}
+                        onChange={setContent}
+                        placeholder="# Title&#10;> Description&#10;&#10;## section: Introduction&#10;Write your content here..."
+                        disabled={isUploading}
+                        height="480px"
+                        className="border-0 rounded-none"
+                    />
+                </div>
             </div>
 
             <div className="flex items-center gap-3">

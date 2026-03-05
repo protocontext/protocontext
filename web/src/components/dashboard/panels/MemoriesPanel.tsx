@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import * as api from "@/lib/api";
+import { PlainTextEditor } from "@/components/dashboard/shared/PlainTextEditor";
 
 export function MemoriesPanel() {
     const [callers, setCallers] = useState<api.CallerSummary[]>([]);
@@ -160,12 +161,11 @@ export function MemoriesPanel() {
                             onChange={(e) => setAddCallerId(e.target.value)}
                             className="font-mono text-sm"
                         />
-                        <textarea
-                            placeholder={"Call summary or notes...\ne.g. Nome: Rossi\nPreferenza: vista giardino"}
+                        <PlainTextEditor
                             value={addContent}
-                            onChange={(e) => setAddContent(e.target.value)}
-                            rows={4}
-                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y font-mono"
+                            onChange={setAddContent}
+                            placeholder="Call summary or notes...&#10;e.g. Nome: Rossi&#10;Preferenza: vista giardino"
+                            height="100px"
                         />
                         <div className="flex justify-end">
                             <Button
@@ -290,12 +290,11 @@ export function MemoriesPanel() {
                             </div>
 
                             {editingProfile ? (
-                                <textarea
+                                <PlainTextEditor
                                     value={profileDraft}
-                                    onChange={(e) => setProfileDraft(e.target.value)}
-                                    rows={6}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y font-mono leading-relaxed"
+                                    onChange={setProfileDraft}
                                     placeholder="Enter profile facts, one per line..."
+                                    height="150px"
                                     autoFocus
                                 />
                             ) : selected.profile ? (
@@ -422,15 +421,13 @@ function QuickAppend({ callerId, onAppended }: { callerId: string; onAppended: (
 
     return (
         <div className="flex gap-2">
-            <textarea
+            <PlainTextEditor
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={setText}
                 placeholder="Append a new memory entry for this caller..."
-                rows={2}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y font-mono"
-                onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend();
-                }}
+                height="60px"
+                className="flex-1 text-xs"
+                onSubmit={handleSend}
             />
             <Button
                 size="sm"

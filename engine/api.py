@@ -394,10 +394,32 @@ def _resolve_ai_params(
     return (ai_key or "", ai_model or "")
 
 
+def _slugify_name(name: str) -> str:
+    """Slugify a name the same way /upload does (lowercase, non-alnum → hyphens)."""
+    s = re.sub(r"[^a-z0-9\-]", "-", name.lower())
+    return re.sub(r"-+", "-", s).strip("-")
+
+
 def _normalize_domain(domain: str) -> str:
-    """Normalize user-provided domain-like strings to registry/index format."""
+    """
+    Normalize user-provided domain-like strings to registry/index format.
+
+    Handles both real domains (stripe.com) and custom upload names
+    (fortevillageresort.com → fortevillageresort-com).
+    """
     domain = re.sub(r"^https?://", "", domain.strip(), flags=re.IGNORECASE)
-    return domain.rstrip("/")
+    domain = domain.rstrip("/")
+
+    # If the raw domain is already in the registry, use it as-is
+    if domain in _registry_domains:
+        return domain
+
+    # Check if a slugified version exists (uploaded domains: dots → hyphens)
+    slugified = _slugify_name(domain)
+    if slugified and slugified != domain and slugified in _registry_domains:
+        return slugified
+
+    return domain
 
 
 async def ensure_domain_indexed(domain: str, ai_key: str = "", ai_model: str = "") -> str:
@@ -612,7 +634,7 @@ async def submit_endpoint(request: SubmitRequest):
     - If the site needs conversion → requires ai_key (and optionally ai_model).
     - The API key is used once for conversion and is never stored.
     """
-    domain = request.domain.strip().replace("https://", "").replace("http://", "").rstrip("/")
+    domain = _normalize_domain(request.domain)
 
     if not domain:
         raise HTTPException(status_code=400, detail="Domain is required")
@@ -662,7 +684,7 @@ async def submit_stream_endpoint(request: SubmitRequest):
       data: {"step": "done", "result": {...}}
       data: {"step": "error", "message": "..."}
     """
-    domain = request.domain.strip().replace("https://", "").replace("http://", "").rstrip("/")
+    domain = _normalize_domain(request.domain)
     if not domain:
         raise HTTPException(status_code=400, detail="Domain is required")
 
@@ -868,7 +890,7 @@ async def content_endpoint(
     Returns the raw text content that can be edited and re-uploaded.
     Works with both real domains and custom upload names.
     """
-    domain = domain.strip().replace("https://", "").replace("http://", "").rstrip("/")
+    domain = _normalize_domain(domain)
     if not domain:
         raise HTTPException(status_code=400, detail="Domain is required")
 
@@ -938,7 +960,7 @@ async def delete_endpoint(request: DeleteRequest):
     Deletes all indexed documents for the domain, removes it from the
     registry file, and clears it from the in-memory cache.
     """
-    domain = request.domain.strip().replace("https://", "").replace("http://", "").rstrip("/")
+    domain = _normalize_domain(request.domain)
 
     if not domain:
         raise HTTPException(status_code=400, detail="Domain is required")
