@@ -34,6 +34,7 @@ AI key and model are passed per-request, never stored.
 """
 
 import os
+import re
 import json
 import time
 import hashlib
@@ -830,8 +831,6 @@ async def upload_endpoint(request: UploadRequest):
     - If the name already exists, its content is replaced (upsert).
     - Content must be valid context.txt format (header + metadata + sections).
     """
-    import re
-
     name = request.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
