@@ -198,6 +198,21 @@ def search(
     # Normalize: extract documents from Typesense hit wrappers
     hits = [hit["document"] for hit in result.get("hits", [])]
 
+    # Re-rank: boost results where query appears in section title
+    if query and query != "*":
+        q_lower = query.lower()
+        q_words = q_lower.split()
+
+        def _title_score(hit: dict) -> int:
+            title = hit.get("title", "").lower()
+            if q_lower in title:
+                return 2  # exact query in title
+            if any(w in title for w in q_words):
+                return 1  # partial word match in title
+            return 0
+
+        hits.sort(key=lambda h: _title_score(h), reverse=True)
+
     return {
         "hits": hits,
         "found": result.get("found", 0),
