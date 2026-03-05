@@ -172,7 +172,8 @@ def search(
 
     params = {
         "q": query if query else "*",
-        "query_by": "body,title,domain,topics",
+        "query_by": "title,body,domain,topics",
+        "query_by_weights": "3,1,1,1",
         "per_page": limit,
     }
 
